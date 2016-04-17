@@ -22,7 +22,9 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	{
 		if (insideAFrame)
 		{
-			throw new IllegalStateException();
+			String message = "Calling startFrame while inside an existing frame!";
+			System.err.println("JUDAX: " + message);
+			throw new IllegalStateException(message);
 		}
 		insideAFrame = true;
 		
@@ -50,7 +52,9 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	{
 		if (!insideAFrame)
 		{
-			throw new IllegalStateException();
+			String message = "Calling endFrame outside of a frame!";
+			System.err.println("JUDAX: " + message);
+			throw new IllegalStateException(message);
 		}
 		insideAFrame = false;
 		// Make a copy of the queued draw events so it can be used in more than one onDrawFrame call while more messages are stacked up
@@ -73,7 +77,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	@Override
 	public synchronized void renderFrame()
 	{
-		if (!webGLMessagesQueueCopy.isEmpty()) throw new IllegalStateException("All the non-frame related WebGL calls should have been processed before a frame is rendered!");
+		if (!webGLMessagesQueueCopy.isEmpty()) 
+		{
+			String message = "All the non-frame related WebGL calls should have been processed before a frame is rendered!";
+			System.err.println("JUDAX: " + message);
+			throw new IllegalStateException(message);
+		}
 		
 		// Use the copy of the queue of webgl calls inside this frame
 		for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameCopy)
