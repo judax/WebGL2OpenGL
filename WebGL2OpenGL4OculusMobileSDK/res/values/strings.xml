@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">WebGL2Native</string>
+	<string name="loadButton">Go</string>
+</resources>
