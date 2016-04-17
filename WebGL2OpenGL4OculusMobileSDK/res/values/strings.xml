@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">WebGL2Native</string>
+    <string name="app_name">WebGL2OpenGL4OculusMobileSDK</string>
 	<string name="loadButton">Go</string>
 </resources>
