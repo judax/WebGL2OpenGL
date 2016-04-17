@@ -1,0 +1,99 @@
+<html>
+<head>
+    <!-- Error handling -->
+    <script>
+        window.addEventListener('error', function(event) {
+            var errorMessage = event.message;
+            var url = event.filename;
+            var lineNumber = event.lineno;
+            var columnNumber = event.colno;
+            alert("ERROR: " + errorMessage + " at " + url + " : " + lineNumber + " : " + columnNumber);
+        });
+    </script>
+
+    <script src="../../js/WebGL2OpenGL.js"></script>
+
+  <meta name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no' />
+  <style type="text/css">
+    body {
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        color: #fff;
+        margin: 0px;
+        padding: 0;
+        overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <script src="three.js"></script>
+	<script>
+    var angle = 0;
+    var angleSpeed = 5;
+
+    var container = document.createElement( 'div' );
+    document.body.appendChild( container );
+
+    // The THREEJS scene
+    var scene = new THREE.Scene();
+
+    // The main camera
+    var camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 10000);
+    camera.position.z = 4;
+
+    // Although the camera is the player, also add it to the scene so it's children can be rendered.
+    scene.add(camera);
+
+    // Without light there is no way we can see a thing! ;)
+    var light = new THREE.AmbientLight( 0xFFFFFF );
+    scene.add( light );
+
+    // The THREEJS WebGL renderer
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.top = 0;
+    container.appendChild(renderer.domElement);
+
+    // Let's build the scenario/environment
+    var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+    var material = new THREE.MeshBasicMaterial( { side: THREE.FrontSide } );
+    var mesh = new THREE.Mesh( geometry, material );
+    var cube = new THREE.Object3D();
+    cube.add(mesh);
+    scene.add(cube);
+
+    // Let's refresh the viewport and projection matrix if the window size changes
+    window.addEventListener( 'resize', onWindowResize, false );
+
+    // Time is important in a real TIME app ;)
+    var clock = new THREE.Clock();
+
+    var onWindowResize = function() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+
+    function update() {
+      var frameTimeInSeconds = this.clock.getDelta();
+      angle += angleSpeed * frameTimeInSeconds;
+      cube.rotation.y = angle;
+    }
+
+    function render() {
+      renderer.render( scene, camera );
+    }
+
+    function loop() {
+      update();
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
+
+  </script>
+</body>
+</html>
