@@ -33,6 +33,15 @@ public class WebGLMessage implements Runnable
   private static HashSet<Integer> projectionMatrixUniformJSIds = new HashSet<Integer>();
   private static HashSet<String> modelViewMatrixUniformNames = new HashSet<String>();
   private static HashSet<Integer> modelViewMatrixUniformsJSIds = new HashSet<Integer>();
+ 
+  // Some default names of matrix uniforms
+  static 
+  {
+  	projectionMatrixUniformNames.add("uProjectionMatrix");
+  	projectionMatrixUniformNames.add("uPMatrix");
+  	
+  	modelViewMatrixUniformNames.add("uMVMatrix");
+  }
   
 	private static float[] projectionMatrix = new float[16];
 	private static float[] modelViewMatrix = new float[16];
