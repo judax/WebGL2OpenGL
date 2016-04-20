@@ -1,5 +1,9 @@
 package com.judax.webgl2opengl.xwalk;
 
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.xwalk.core.XWalkExtension;
 
 import com.judax.webgl2opengl.WebGLMessage;
@@ -79,7 +83,7 @@ public class WebGLXWalkExtension
 				try
 				{
 					WebGLMessage webGLMessage = new WebGLMessage(message);
-					webGLMessageProcessor.queueWebGLMessage(webGLMessage);
+					result = webGLMessageProcessor.queueWebGLMessage(webGLMessage);
 				}
 				catch(Exception e)
 				{
@@ -104,139 +108,4 @@ public class WebGLXWalkExtension
 			processMessage(message);
 		}
 	};	
-	
-/*
-
-			else if (name.equals("getParameter"))
-			{
-				int target = args.getInt(0);
-				
-				switch( target )
-				{
-					// Bool
-					case GLES20.GL_BLEND : case GLES20.GL_CULL_FACE : case GLES20.GL_DEPTH_TEST : case GLES20.GL_DEPTH_WRITEMASK : case GLES20.GL_DITHER : case GLES20.GL_POLYGON_OFFSET_FILL :
-					case GLES20.GL_SAMPLE_ALPHA_TO_COVERAGE : case GLES20.GL_SAMPLE_COVERAGE : case GLES20.GL_SAMPLE_COVERAGE_INVERT : case GLES20.GL_SCISSOR_TEST :
-					case GLES20.GL_SHADER_COMPILER : case GLES20.GL_STENCIL_TEST :
-					{
-						boolean[] value = new boolean[1];
-						GLES20.glGetBooleanv(target, value, 0);
-					}
-				
-					// Int
-					case GLES20.GL_ACTIVE_TEXTURE: case GLES20.GL_ALPHA_BITS: case GLES20.GL_ARRAY_BUFFER_BINDING: case GLES20.GL_BLEND_DST_ALPHA: case GLES20.GL_BLEND_DST_RGB:
-					case GLES20.GL_BLEND_EQUATION_ALPHA: case GLES20.GL_BLEND_EQUATION_RGB: case GLES20.GL_BLEND_SRC_ALPHA: case GLES20.GL_BLEND_SRC_RGB: case GLES20.GL_BLUE_BITS:
-					case GLES20.GL_CULL_FACE_MODE: case GLES20.GL_CURRENT_PROGRAM: case GLES20.GL_DEPTH_BITS: case GLES20.GL_DEPTH_FUNC: case GLES20.GL_ELEMENT_ARRAY_BUFFER_BINDING:
-					case GLES20.GL_FRAMEBUFFER_BINDING: case GLES20.GL_FRONT_FACE: case GLES20.GL_GENERATE_MIPMAP_HINT: case GLES20.GL_GREEN_BITS:
-					case GLES20.GL_IMPLEMENTATION_COLOR_READ_FORMAT: case GLES20.GL_IMPLEMENTATION_COLOR_READ_TYPE: case GLES20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS:
-					case GLES20.GL_MAX_CUBE_MAP_TEXTURE_SIZE: case GLES20.GL_MAX_FRAGMENT_UNIFORM_VECTORS: case GLES20.GL_MAX_RENDERBUFFER_SIZE:
-					case GLES20.GL_MAX_TEXTURE_IMAGE_UNITS: case GLES20.GL_MAX_TEXTURE_SIZE: case GLES20.GL_MAX_VARYING_VECTORS: case GLES20.GL_MAX_VERTEX_ATTRIBS:
-					case GLES20.GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS: case GLES20.GL_MAX_VERTEX_UNIFORM_VECTORS: case GLES20.GL_MAX_VIEWPORT_DIMS:
-					case GLES20.GL_NUM_COMPRESSED_TEXTURE_FORMATS: case GLES20.GL_NUM_SHADER_BINARY_FORMATS: case GLES20.GL_PACK_ALIGNMENT: case GLES20.GL_RED_BITS:
-					case GLES20.GL_RENDERBUFFER_BINDING: case GLES20.GL_SAMPLE_BUFFERS: case GLES20.GL_SAMPLES: case GLES20.GL_STENCIL_BACK_FAIL: case GLES20.GL_STENCIL_BACK_FUNC:
-					case GLES20.GL_STENCIL_BACK_PASS_DEPTH_FAIL: case GLES20.GL_STENCIL_BACK_PASS_DEPTH_PASS: case GLES20.GL_STENCIL_BACK_REF: case GLES20.GL_STENCIL_BACK_VALUE_MASK:
-					case GLES20.GL_STENCIL_BACK_WRITEMASK: case GLES20.GL_STENCIL_BITS: case GLES20.GL_STENCIL_CLEAR_VALUE: case GLES20.GL_STENCIL_FAIL: case GLES20.GL_STENCIL_FUNC:
-					case GLES20.GL_STENCIL_PASS_DEPTH_FAIL: case GLES20.GL_STENCIL_PASS_DEPTH_PASS: case GLES20.GL_STENCIL_REF: case GLES20.GL_STENCIL_VALUE_MASK:
-					case GLES20.GL_STENCIL_WRITEMASK: case GLES20.GL_SUBPIXEL_BITS: case GLES20.GL_TEXTURE_BINDING_2D: case GLES20.GL_TEXTURE_BINDING_CUBE_MAP:
-					case GLES20.GL_UNPACK_ALIGNMENT:
-		            case 0x84FE: case 0x84FF: //TEXTURE_MAX_ANISOTROPY_EXT && MAX_TEXTURE_MAX_ANISOTROPY_EXT
-					{
-						GLint value;
-						GLES20.glGetIntegerv(target, &value);
-						return JSValueMakeNumber(context, value);
-					}
-						
-					//float
-					case GLES20.GL_DEPTH_CLEAR_VALUE: case GLES20.GL_LINE_WIDTH: case GLES20.GL_POLYGON_OFFSET_FACTOR:
-					case GLES20.GL_POLYGON_OFFSET_UNITS: case GLES20.GL_SAMPLE_COVERAGE_VALUE:
-					{
-						GLfloat value;
-						GLES20.glGetFloatv(target, &value);
-						return JSValueMakeNumber(context, value);
-						
-					}
-
-					// Two float values
-					case GLES20.GL_ALIASED_LINE_WIDTH_RANGE: case GLES20.GL_ALIASED_POINT_SIZE_RANGE: case GLES20.GL_DEPTH_RANGE:
-					{
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLfloat>(context, 2);
-						GLfloat *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLfloat>(context, jsvalues, length, values);
-						GLES20.glGetFloatv(target, values);
-						return JSObjectAsValue(jsvalues);
-					}
-					
-					// bvec4
-					case GLES20.GL_COLOR_WRITEMASK:
-					{
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLboolean>(context, 4);
-						GLboolean *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLboolean>(context, jsvalues, length, values);
-						GLES20.glGetBooleanv(target, values);
-						return JSObjectAsValue(jsvalues);
-					}
-						
-					// ivec4
-					case GLES20.GL_SCISSOR_BOX: case GLES20.GL_VIEWPORT:
-					{
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLint>(context, 4);
-						GLint *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLint>(context, jsvalues, length, values);
-						GLES20.glGetIntegerv(target, values);
-						return JSObjectAsValue(jsvalues);
-					}
-						
-					// fvec4
-					case GLES20.GL_BLEND_COLOR: case GLES20.GL_COLOR_CLEAR_VALUE:
-					{
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLfloat>(context, 4);
-						GLfloat *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLfloat>(context, jsvalues, length, values);
-						GLES20.glGetFloatv(target, values);
-						return JSObjectAsValue(jsvalues);
-					}
-				
-					// list<int>
-					case GLES20.GL_COMPRESSED_TEXTURE_FORMATS:
-					{
-						int count = 0 ;
-						GLES20.glGetIntegerv(GLES20.GL_NUM_COMPRESSED_TEXTURE_FORMATS, &count);
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLint>(context, count);
-						GLint *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLint>(context, jsvalues, length, values);
-						GLES20.glGetIntegerv(GLES20.GL_COMPRESSED_TEXTURE_FORMATS, values);
-						return JSObjectAsValue(jsvalues);
-					}
-
-					// list<int>
-					case GLES20.GL_SHADER_BINARY_FORMATS:
-					{
-						int count = 0 ;
-						GLES20.glGetIntegerv(GLES20.GL_NUM_SHADER_BINARY_FORMATS, &count);
-						JSObjectRef jsvalues = JSTypedArrays::NewTypedArray<GLint>(context, count);
-						GLint *values = NULL ;
-						uint32_t length = 0 ;
-						JSTypedArrays::GetTypedArrayData<GLint>(context, jsvalues, length, values);
-						GLES20.glGetIntegerv(GLES20.GL_SHADER_BINARY_FORMATS, values);
-						return JSObjectAsValue(jsvalues);
-					}
-		            default: {
-						IDTKLog(IDTK_LOG_WARNING, "Unhandled WebGL enum in getParameter, fallback to integer: %i" , target );
-		                GLint value = 0;
-		                GLES20.glGetIntegerv(target, &value);
-		                return JSValueMakeNumber(context, value);
-		            }
-				}
-			}
-			else
-			{
-				*exception = JSUtilities::StringToValue(context, WEBGLES20.GL_ERROR_ARGCOUNT);
-			}
-
- */
-	
 }

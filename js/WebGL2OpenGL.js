@@ -1,7 +1,7 @@
 (function() {
 	var ext = window.WebGLXWalkExtension;
-	var makeOriginalWebGLCalls = typeof(ext) === "undefined";
-	// if (typeof(ext) !== "undefined") {
+	if (typeof(ext) !== "undefined") {
+		var makeOriginalWebGLCalls = typeof(ext) === "undefined";
 		// This variable will allow to create a unique id-s for some elements in the JS side (shaders, programs, uniforms, ...).
 		// Shades, programs, uniforms, ... are objects in the JS side. The unique id generated for them will be stored inside the object
 		// so the native side can have a correspondance between it and the id that will be generated in the native side.
@@ -47,13 +47,21 @@
 		*/
 		function processExtensionCall(originalFunctionName, originalFunctionCallResult, argumentsArray) {
 			// All these functions are not currently supported in the native side, so just simply return/do nothing.
-			if (originalFunctionName === "getProgramParameter" || 
-				originalFunctionName === "getShaderParameter" ||
+			if (
 				originalFunctionName === "clear" ||
 				originalFunctionName === "clearColor" ||
 				originalFunctionName === "viewport") {
 				return makeOriginalWebGLCalls ? originalFunctionCallResult : true;
 			}
+
+			var synch = 
+				originalFunctionName === "getParameter" || 
+				originalFunctionName === "getActiveAttrib" || 
+				originalFunctionName === "getActiveUniform" || 
+				originalFunctionName === "getProgramParameter" || 
+				originalFunctionName === "getShaderPrecisionFormat" ||
+				originalFunctionName === "getShaderInfoLog" || 
+				originalFunctionName === "getShaderParameter";
 
 			// The structure of the extCallObject is -> { name: "", args: [], extId: ID } being extId optional and only
 			// for certain calls.
@@ -114,7 +122,17 @@
 
 			var extCallString = JSON.stringify(extCallObject);
 			if (ext) {
-				ext.makeCallAsync(extCallString);
+				if (synch) {
+					originalFunctionCallResult = JSON.parse(ext.makeCallSync(extCallString));
+					// If the result is indeed a string, it will be provided inside an object so it is correctly escaped.
+					// The object will contain a property called 'webGL2OpenGLCallResultString'.
+					if (originalFunctionCallResult instanceof Object && typeof(originalFunctionCallResult.webGL2OpenGLCallResultString) !== "undefined") {
+						originalFunctionCallResult = originalFunctionCallResult.webGL2OpenGLCallResultString;
+					}
+				}
+				else {
+					ext.makeCallAsync(extCallString);
+				}
 			}
 
 			return originalFunctionCallResult;
@@ -127,12 +145,22 @@
 						return function() {
 							var argumentsArray = Array.prototype.slice.apply(arguments);
 							var result = undefined;
+
+
+							if (originalFunctionName === "uniformMatrix4fv") {
+								console.log("uniformMatrix4fv");
+							}
+
+
 							// IMPORTANT: Why should we call WebGL to do anything? Do not make the calls unless specified!
 							if (makeOriginalWebGLCalls) {
 								result = originalFunction.apply(originalWebGLContext, argumentsArray);
+								console.log("JUDAX: WebGL call to '" + originalFunctionName + "' intercepted! Original call result = " + result);
+								processExtensionCall(originalFunctionName, result, argumentsArray);
 							}
-							// console.log("JUDAX: WebGL call to '" + originalFunctionName + "' intercepted! result = " + result);
-							result = processExtensionCall(originalFunctionName, result, argumentsArray);
+							else {
+								result = processExtensionCall(originalFunctionName, result, argumentsArray);
+							}
 							return result;
 						};
 					})(propertyName, originalWebGLContext[propertyName]);
@@ -176,5 +204,5 @@
 			}
 			return context;
 		};
-	// }
+	}
 })();

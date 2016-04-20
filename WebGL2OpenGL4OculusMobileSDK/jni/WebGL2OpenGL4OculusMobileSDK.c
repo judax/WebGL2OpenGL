@@ -2075,10 +2075,6 @@ void * AppThreadFunction( void * parm )
 			continue;
 		}
         
-        // JUDAX BEGIN
-        (*(java.Env))->CallVoidMethod(java.Env, appThread->ActivityObject, appThread->updateFromNativeMethodID);
-        // JUDAX END
-
 		// Create the scene if not yet created.
 		// The scene is created here to be able to show a loading icon.
 		if ( !ovrScene_IsCreated( &appState.Scene ) )
@@ -2104,6 +2100,10 @@ void * AppThreadFunction( void * parm )
 		// calling vrapi_GetPredictedDisplayTime().
 		appState.FrameIndex++;
 
+        // JUDAX BEGIN
+        (*(java.Env))->CallVoidMethod(java.Env, appThread->ActivityObject, appThread->updateFromNativeMethodID);
+        // JUDAX END
+        
 		// Get the HMD pose, predicted for the middle of the time period during which
 		// the new eye images will be displayed. The number of frames predicted ahead
 		// depends on the pipeline depth of the engine and the synthesis rate.
