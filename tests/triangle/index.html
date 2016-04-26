@@ -87,7 +87,9 @@
         gl.shaderSource(shader, str);
         gl.compileShader(shader);
 
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        var result = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
+        alert("getShaderParameter result = " + result);
+        if (!result) {
             alert(gl.getShaderInfoLog(shader));
             return null;
         }
@@ -107,7 +109,9 @@
         gl.attachShader(shaderProgram, fragmentShader);
         gl.linkProgram(shaderProgram);
 
-        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+        var result = gl.getProgramParameter(shaderProgram, gl.LINK_STATUS);
+        alert("getProgramParameter result = " + result);
+        if (!result) {
             alert("Could not initialise shaders");
         }
 
@@ -194,15 +198,15 @@ function stringToFloat32Array(str) {
         angle += angleSpeed * elapsedTime;
 
         gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
-        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        // gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
         setMatrixUniforms();
         gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
 
         // Disable enabled states to forbid other draw calls 
-        gl.disableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.useProgram(null);
+        // gl.disableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        // gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        // gl.useProgram(null);
 
         requestAnimationFrame(drawScene);
     }
