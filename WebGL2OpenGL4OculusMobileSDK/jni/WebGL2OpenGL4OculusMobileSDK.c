@@ -60,6 +60,7 @@ static const int GPU_LEVEL			= 3;
 
 // JUDAX BEGIN
 #define RENDER_NATIVE_TRIANGLE  0
+#define USE_SCENE               0
 // JUDAX END
 
 // JUDAX BEGIN (forward declarations)
@@ -594,6 +595,9 @@ static void ovrGeometry_CreateVAO( ovrGeometry * geometry )
 	{
 		if ( geometry->VertexAttribs[i].Index != -1 )
 		{
+            
+            ALOGV("JUDAX: glEnableVertexAttribArray(%d)", geometry->VertexAttribs[i].Index);
+            
 			GL( glEnableVertexAttribArray( geometry->VertexAttribs[i].Index ) );
 			GL( glVertexAttribPointer( geometry->VertexAttribs[i].Index, geometry->VertexAttribs[i].Size,
 					geometry->VertexAttribs[i].Type, geometry->VertexAttribs[i].Normalized,
@@ -901,6 +905,7 @@ static void ovrFramebuffer_Advance( ovrFramebuffer * frameBuffer )
 	frameBuffer->TextureSwapChainIndex = ( frameBuffer->TextureSwapChainIndex + 1 ) % frameBuffer->TextureSwapChainLength;
 }
 
+#if USE_SCENE
 /*
 ================================================================================
 
@@ -1169,6 +1174,8 @@ static void ovrSimulation_Advance( ovrSimulation * simulation, double predictedD
 	simulation->CurrentRotation.z = (float)( predictedDisplayTime );
 }
 
+#endif
+
 /*
 ================================================================================
 
@@ -1228,7 +1235,10 @@ static void ovrRenderer_Destroy( ovrRenderer * renderer )
 
 static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJava * java,
 											long long frameIndex, int minimumVsyncs, const ovrPerformanceParms * perfParms,
-											const ovrScene * scene, const ovrSimulation * simulation, 
+#if USE_SCENE
+											const ovrScene * scene,
+                                            const ovrSimulation * simulation,
+#endif
 											const ovrTracking * tracking, ovrMobile * ovr, ovrAppThread* appThread )
 {
 	ovrFrameParms parms = vrapi_DefaultFrameParms( java, VRAPI_FRAME_INIT_DEFAULT, vrapi_GetTimeInSeconds(), NULL );
@@ -1237,6 +1247,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
 	parms.PerformanceParms = *perfParms;
 	parms.Layers[VRAPI_FRAME_LAYER_TYPE_WORLD].Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
 
+#if USE_SCENE
 	// Update the instance transform attributes.
 	GL( glBindBuffer( GL_ARRAY_BUFFER, scene->InstanceTransformBuffer ) );
 	GL( ovrMatrix4f * cubeTransforms = (ovrMatrix4f *) glMapBufferRange( GL_ARRAY_BUFFER, 0,
@@ -1256,6 +1267,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
 	}
 	GL( glUnmapBuffer( GL_ARRAY_BUFFER ) );
 	GL( glBindBuffer( GL_ARRAY_BUFFER, 0 ) );
+#endif
 
 	// Calculate the center view matrix.
 	const ovrHeadModelParms headModelParms = vrapi_DefaultHeadModelParms();
@@ -1286,6 +1298,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
 		GL( glScissor( 0, 0, frameBuffer->Width, frameBuffer->Height ) );
 		GL( glClearColor( 0.125f, 0.0f, 0.125f, 1.0f ) );
 		GL( glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT ) );
+#if USE_SCENE
 		GL( glUseProgram( scene->Program.Program ) );
 		GL( glUniformMatrix4fv( scene->Program.Uniforms[UNIFORM_VIEW_MATRIX], 1, GL_TRUE, (const GLfloat *)eyeViewMatrix.M[0] ) );
 		GL( glUniformMatrix4fv( scene->Program.Uniforms[UNIFORM_PROJECTION_MATRIX], 1, GL_TRUE, (const GLfloat *)renderer->ProjectionMatrix.M[0] ) );
@@ -1293,6 +1306,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
 		GL( glDrawElementsInstanced( GL_TRIANGLES, scene->Cube.IndexCount, GL_UNSIGNED_SHORT, NULL, NUM_INSTANCES ) );
 		GL( glBindVertexArray( 0 ) );
 		GL( glUseProgram( 0 ) );
+#endif
         
         
         // JUDAX BEGIN
@@ -1309,7 +1323,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
         GL( glBindBuffer(34962, 0) );
         GL( glUseProgram(0) );
 #endif
-        
+      
         // Pass the projection and modelview matrices (thid is not correct to be done per frame and per eye but I am being lazy!)
         // As the java side will make a copy of the matrices, we can reuse the same floatArray instance
         (*(java->Env))->SetFloatArrayRegion(java->Env, appThread->matrixFloatArray, 0, 16, (jfloat*)&(renderer->ProjectionMatrix));
@@ -1322,6 +1336,7 @@ static ovrFrameParms ovrRenderer_RenderFrame( ovrRenderer * renderer, const ovrJ
         // JUDAX END
         
 
+        
 		// Explicitly clear the border texels to black because OpenGL-ES does not support GL_CLAMP_TO_BORDER.
 		{
 			// Clear to fully opaque black.
@@ -1393,8 +1408,10 @@ typedef struct
 	long long			FrameIndex;
 	int					MinimumVsyncs;
 	ovrPerformanceParms	PerformanceParms;
+#if USE_SCENE
 	ovrScene *			Scene;
 	ovrSimulation		Simulation;
+#endif
 	ovrTracking			Tracking;
 } ovrRenderThread;
 
@@ -1624,8 +1641,12 @@ typedef struct
 	ANativeWindow *		NativeWindow;
 	bool				Resumed;
 	ovrMobile *			Ovr;
+#if USE_SCENE
 	ovrScene			Scene;
 	ovrSimulation		Simulation;
+#else
+    bool                Initialized;
+#endif
 	long long			FrameIndex;
 	int					MinimumVsyncs;
 	ovrBackButtonState	BackButtonState;
@@ -1655,8 +1676,12 @@ static void ovrApp_Clear( ovrApp * app )
 	app->WasMounted = false;
 
 	ovrEgl_Clear( &app->Egl );
+#if USE_SCENE
 	ovrScene_Clear( &app->Scene );
 	ovrSimulation_Clear( &app->Simulation );
+#else
+    app->Initialized = false;
+#endif
 #if MULTI_THREADED
 	ovrRenderThread_Clear( &app->RenderThread );
 #else
@@ -2077,7 +2102,11 @@ void * AppThreadFunction( void * parm )
         
 		// Create the scene if not yet created.
 		// The scene is created here to be able to show a loading icon.
+#if USE_SCENE
 		if ( !ovrScene_IsCreated( &appState.Scene ) )
+#else 
+        if ( !appState.Initialized )
+#endif
 		{
 #if MULTI_THREADED
 			// Show a loading icon.
@@ -2092,8 +2121,12 @@ void * AppThreadFunction( void * parm )
 			vrapi_SubmitFrame( appState.Ovr, &frameParms );
 #endif
 
+#if USE_SCENE
 			// Create the scene.
 			ovrScene_Create( &appState.Scene );
+#else
+            appState.Initialized = true;
+#endif
 		}
 
 		// This is the only place the frame index is incremented, right before
@@ -2115,20 +2148,27 @@ void * AppThreadFunction( void * parm )
 		const ovrHeadModelParms headModelParms = vrapi_DefaultHeadModelParms();
 		const ovrTracking tracking = vrapi_ApplyHeadModel( &headModelParms, &baseTracking );
 
+#if USE_SCENE
 		// Advance the simulation based on the predicted display time.
 		ovrSimulation_Advance( &appState.Simulation, predictedDisplayTime );
+#endif
 
 #if MULTI_THREADED
 		// Render the eye images on a separate thread.
 		ovrRenderThread_Submit( &appState.RenderThread, appState.Ovr,
 				RENDER_FRAME, appState.FrameIndex, appState.MinimumVsyncs, &perfParms,
-				&appState.Scene, &appState.Simulation, &tracking );
+#if USE_SCENE
+				&appState.Scene, &appState.Simulation,
+#endif
+                &tracking );
 #else
 		// Render eye images and setup ovrFrameParms using ovrTracking.
 		const ovrFrameParms frameParms = ovrRenderer_RenderFrame( &appState.Renderer, &appState.Java,
 				appState.FrameIndex, appState.MinimumVsyncs, &perfParms,
-				&appState.Scene, &appState.Simulation, &tracking,
-				appState.Ovr, appThread );
+#if USE_SCENE
+                &appState.Scene, &appState.Simulation,
+#endif
+                &tracking, appState.Ovr, appThread );
 
 		// Hand over the eye images to the time warp.
 		vrapi_SubmitFrame( appState.Ovr, &frameParms );
@@ -2141,7 +2181,10 @@ void * AppThreadFunction( void * parm )
 	ovrRenderer_Destroy( &appState.Renderer );
 #endif
 
+#if USE_SCENE
 	ovrScene_Destroy( &appState.Scene );
+#endif
+    
 	ovrEgl_DestroyContext( &appState.Egl );
 
 	vrapi_Shutdown();
