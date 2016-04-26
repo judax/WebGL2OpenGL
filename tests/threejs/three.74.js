@@ -29584,6 +29584,7 @@ THREE.WebGLProgram = ( function () {
 		for ( var i = 0; i < n; i ++ ) {
 
 			var info = gl.getActiveAttrib( program, i );
+
 			var name = info.name;
 
 			// console.log("THREE.WebGLProgram: ACTIVE VERTEX ATTRIBUTE:", name, i );
@@ -30382,7 +30383,9 @@ THREE.WebGLShader = ( function () {
 		gl.compileShader( shader );
 
 		if ( gl.getShaderParameter( shader, gl.COMPILE_STATUS ) === false ) {
-
+			// JUDAX BEGIN
+			alert("Could not compile shader: " + JSON.stringify(gl.getShaderInfoLog(shader)));
+			// JUDAX END
 			console.error( 'THREE.WebGLShader: Shader couldn\'t compile.' );
 
 		}
@@ -31300,7 +31303,6 @@ THREE.WebGLState = function ( gl, extensions, paramThreeToGL ) {
 			this.enable( gl.SCISSOR_TEST );
 
 		} else {
-
 			this.disable( gl.SCISSOR_TEST );
 
 		}
