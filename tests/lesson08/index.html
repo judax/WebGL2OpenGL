@@ -135,6 +135,9 @@
         gl.attachShader(shaderProgram, fragmentShader);
         gl.linkProgram(shaderProgram);
 
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+
         if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
             alert("Could not initialise shaders");
         }
@@ -437,9 +440,9 @@
         mat4.rotate(mvMatrix, degToRad(xRot), [1, 0, 0]);
         mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
 
-        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-        gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
-        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);                
+        // gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        // gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+        // gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);                
 
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -497,12 +500,12 @@
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
 
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.disableVertexAttribArray(shaderProgram.textureCoordAttribute);
-        gl.disableVertexAttribArray(shaderProgram.vertexNormalAttribute);
-        gl.disableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-        gl.useProgram(null);        
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+        // gl.disableVertexAttribArray(shaderProgram.textureCoordAttribute);
+        // gl.disableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+        // gl.disableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        // gl.useProgram(null);        
     }
 
 
