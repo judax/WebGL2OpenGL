@@ -54,52 +54,6 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			}
 		}
 		
-		// DIRTY HACK BEGIN ===================================
-		// TODO: Get rid of this! It is just a test to verify that it is possible to have frame accurate VR!
-		// From making the queue public to this whole hack, it should be handled internally using some configuration data.
-//		synchronized(webGLMessageProcessor)
-//		{
-//			
-//			if (!webGLMessageProcessor.webGLMessagesQueueCopy.isEmpty())
-//				System.out.println("JUDAX: updateFrmNative: webGLMessagesQueueCopy.size() = " + webGLMessageProcessor.webGLMessagesQueueCopy.size());
-//			
-//			for (WebGLMessage webGLMessage: webGLMessageProcessor.webGLMessagesQueueCopy)
-//			{
-//				String message = webGLMessage.getMessage();
-//				
-//				System.out.println("JUDAX: updateFromName: message = " + message);
-//				
-//				if (message.contains("getUniformLocation"))
-//				{
-//					boolean cameraMatrix = message.contains("uCameraModelViewMatrix");
-//					boolean projectionMatrix = !cameraMatrix && message.contains("uProjectionMatrix");
-//					if (cameraMatrix || projectionMatrix)
-//					{
-//						try
-//						{
-//							JSONObject messageJSON = new JSONObject(message);
-//							if (cameraMatrix)
-//							{
-//								jsCameraModelViewMatrixId = messageJSON.getInt("extId");
-//							}
-//							else if (projectionMatrix)
-//							{
-//								jsProjectionMatrixId = messageJSON.getInt("extId");
-//							}
-//						}
-//						catch(JSONException e)
-//						{
-//							System.err.println("JUDAX: " + e.toString());
-//						}
-//					}
-//				}
-//				webGLMessage.run();
-//			}		
-//			// Get rid of all the messages
-//			webGLMessageProcessor.webGLMessagesQueueCopy.clear();
-//		}
-		// DIRTY HACK END ===================================
-		
 		webGLMessageProcessor.update();
 	}
 	
@@ -116,64 +70,8 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		}
 	}
 	
-	private WebGLMessageProcessorImpl webGLMessageProcessor = new WebGLMessageProcessorImpl()
-	{
-		// DIRTY HACK BEGIN ===================================
-//		private boolean showFirstFrame = true;
-		// TODO: Get rid of this! It is just a test to verify that it is possible to have frame accurate VR!
-//		@Override
-//		public synchronized void renderFrame()
-//		{
-//			for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameCopy)
-//			{
-//				String message = webGLMessage.getMessage();
-//				
-//				if (showFirstFrame) System.out.println("JUDAX: renderFrame: " + message);
-//				
-//				boolean messageProcessed = false;
-//				if (message.contains("uniformMatrix4fv"))
-//				{
-//					try
-//					{
-//						JSONObject messageJSON = new JSONObject(message);
-//						JSONArray args = messageJSON.getJSONArray("args");
-//						int jsId = args.getJSONObject(0).getInt("extId");
-//						float[] matrix = null;
-//						if (jsId == jsCameraModelViewMatrixId)
-//						{
-//							matrix = modelViewMatrix;
-//						}
-//						else if (jsId == jsProjectionMatrixId)
-//						{
-//							matrix = projectionMatrix;
-//						}
-//						if (matrix != null)
-//						{
-//							int location = webGLMessage.getNativeIdFromJSId(jsId);
-//							int count = 1;
-//							boolean transpose = args.getBoolean(1);
-//							int offset = 0;
-//							GLES20.glUniformMatrix4fv(location, count, transpose, matrix, offset);
-//							messageProcessed = true;
-//						}
-//					}
-//					catch(JSONException e)
-//					{
-//						System.err.println("JUDAX: " + e.toString());
-//					}
-//				}
-//				if (!messageProcessed)
-//				{
-//					webGLMessage.run();
-//				}
-//			}
-//			
-//			if (showFirstFrame && !webGLMessagesQueueInsideAFrameCopy.isEmpty()) showFirstFrame = false;
-//		}		
-		// DIRTY HACK END ===================================
-
-	};
-
+	private WebGLMessageProcessorImpl webGLMessageProcessor = new WebGLMessageProcessorImpl();
+	
 	@Override protected void onCreate( Bundle icicle )
 	{
 		super.onCreate( icicle );
