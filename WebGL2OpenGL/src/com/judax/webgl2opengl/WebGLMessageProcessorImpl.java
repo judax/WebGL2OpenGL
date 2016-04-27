@@ -52,16 +52,20 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
 			webGLMessagesQueue.clear();
 			
-			if (insideAFrame && !webGLMessagesQueueInsideAFrame.isEmpty())
+			if (insideAFrame)
 			{
-				String s = "";
-				for (int i = 0; i < webGLMessagesQueueInsideAFrame.size(); i++)
+				System.err.println("JUDAX: A synchronous call to '" + webGLMessage.getMessage() + "' made inside a frame. Not a great idea. Many of these calls might slow down the JS process.");
+				if (!webGLMessagesQueueInsideAFrame.isEmpty())
 				{
-					s += "'" + webGLMessagesQueueInsideAFrame.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueInsideAFrame.size() - 1 ? ", " : "");
+					String s = "";
+					for (int i = 0; i < webGLMessagesQueueInsideAFrame.size(); i++)
+					{
+						s += "'" + webGLMessagesQueueInsideAFrame.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueInsideAFrame.size() - 1 ? ", " : "");
+					}
+					System.err.println("JUDAX: Synchronous WebGLMessage '" + webGLMessage.getMessage() + "' inside a frame with queued render calls: " + s);
+					webGLMessagesQueueCopy.addAll(webGLMessagesQueueInsideAFrame);
+					webGLMessagesQueueInsideAFrame.clear();
 				}
-				System.err.println("JUDAX: Synchronous WebGLMessage '" + webGLMessage.getMessage() + "' inside a frame with queued render calls: " + s);
-				webGLMessagesQueueCopy.addAll(webGLMessagesQueueInsideAFrame);
-				webGLMessagesQueueInsideAFrame.clear();
 			}
 			
 			try
