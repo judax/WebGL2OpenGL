@@ -27,7 +27,7 @@
   </style>
 </head>
 <body>
-  <script src="three.74.js"></script>
+  <script src="../threejs/three.74.js"></script>
   <!-- <script src="three.min.67.js"></script> -->
   <script>
     var angle = 0;
@@ -60,10 +60,18 @@
     // Let's build the scenario/environment
     var geometry = new THREE.BoxGeometry( 1, 1, 1 );
     var material = new THREE.MeshBasicMaterial( { side: THREE.DoubleSide } );
-    var mesh = new THREE.Mesh( geometry, material );
-    var cube = new THREE.Object3D();
-    cube.add(mesh);
-    scene.add(cube);
+
+    var cubes = [];
+
+    for (var i = 0; i < 500; i++) {
+      var mesh = new THREE.Mesh( geometry, material );
+      var cube = new THREE.Object3D();
+      cube.add(mesh);
+      scene.add(cube);
+
+      cube.position.set(Math.random() * 100 - 50, Math.random() * 100 - 50, -Math.random() * 100);
+      cubes.push(cube);
+    }
 
     // Let's refresh the viewport and projection matrix if the window size changes
     window.addEventListener( 'resize', onWindowResize, false );
@@ -80,9 +88,11 @@
     function update() {
       var frameTimeInSeconds = this.clock.getDelta();
       angle += angleSpeed * frameTimeInSeconds;
-      cube.rotation.y = angle * 0.5;
-      cube.rotation.x = angle * 0.3;
-      cube.rotation.z = angle * 0.7;
+      for (var i = 0; i < cubes.length; i++) {
+        cubes[i].rotation.y = angle * 0.5;
+        cubes[i].rotation.x = angle * 0.3;
+        cubes[i].rotation.z = angle * 0.7;
+      }
     }
 
     function render() {
