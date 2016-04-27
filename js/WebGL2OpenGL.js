@@ -1,12 +1,12 @@
 (function() {
 	var ext = window.WebGLXWalkExtension;
-	if (typeof(ext) !== "undefined") {
+	// if (typeof(ext) !== "undefined") {
 		var makeOriginalWebGLCalls = typeof(ext) === "undefined";
 		// This variable will allow to create a unique id-s for some elements in the JS side (shaders, programs, uniforms, ...).
 		// Shades, programs, uniforms, ... are objects in the JS side. The unique id generated for them will be stored inside the object
 		// so the native side can have a correspondance between it and the id that will be generated in the native side.
 		// This is mandatory as the native side cannot execute OpenGL calls in the JS thread, thus, the process is asynchronous.
-		var nextExtId = 1;
+		var nextWebGL2OpenGLId = 1;
 
 		// Store the original HTMLCanvasElement getContext function as we want to inject ours.
 		var originalHTMLCanvasElementPrototypeGetContextFunction = HTMLCanvasElement.prototype.getContext;
@@ -14,21 +14,27 @@
 		// Store the original requestAnimationFrame function as we want to inject ours.
 		// We need to have control over the requestAnimationFrame to identify the webGL calls that should be performes in the native render loop/function.
 		var originalRequestAnimationFrame = window.requestAnimationFrame;
-		var judaxRequestAnimationFrameCallback = null;
 
-		function judaxRequestAnimationFrame(timeStamp) {
+		// We will store all the request animation frame callbacks in a queue, the same way the native side does it.
+		// If, for some reason, more than one callback is set before the previous one is processed, we need to make sure that
+		// we hold on to the previous functions too to keep their context/closures.
+		var judaxRequestAnimationFrameCallbacks = [];
+
+		function judaxRequestAnimationFrame() {
 			if (ext) {
 				ext.makeCallAsync("startFrame");
 			}
-			judaxRequestAnimationFrameCallback.call(window, timeStamp);
+			var argumentsArray = Array.prototype.slice.apply(arguments);
+			judaxRequestAnimationFrameCallbacks[0].apply(window, argumentsArray);
+			judaxRequestAnimationFrameCallbacks.splice(0, 1);
 			if (ext) {
 				ext.makeCallAsync("endFrame");
 			}
 		}
 
 		window.requestAnimationFrame = function(callback) {
-			judaxRequestAnimationFrameCallback = callback;
-			originalRequestAnimationFrame(judaxRequestAnimationFrame);
+			judaxRequestAnimationFrameCallbacks.push(callback);
+			originalRequestAnimationFrame.call(this, judaxRequestAnimationFrame);
 		};
 
 		/**
@@ -37,7 +43,7 @@
 		extCallObject = {
 			name: "THE_NAME_OF_THE_FUNCTION", // Self explanatory ;)
 			args: [] // An array that can be stringified!
-			extId: 0 // An id that matches JS WebGL objects and native side identifiers.
+			webGL2OpenGLId: 0 // An id that matches JS WebGL objects and native side identifiers.
 		}
 
 		TODO: Optimize the calls to the native side by reducing the strings that are generated. Make some tests to check where the bottleneck is first.
@@ -50,20 +56,12 @@
 			if (
 				originalFunctionName === "clear" ||
 				originalFunctionName === "clearColor" ||
+				originalFunctionName === "getExtension" || 
 				originalFunctionName === "viewport") {
-				return makeOriginalWebGLCalls ? originalFunctionCallResult : true;
+				return makeOriginalWebGLCalls ? originalFunctionCallResult : null;
 			}
 
-			var synch = 
-				originalFunctionName === "getParameter" || 
-				originalFunctionName === "getActiveAttrib" || 
-				originalFunctionName === "getActiveUniform" || 
-				originalFunctionName === "getProgramParameter" || 
-				originalFunctionName === "getShaderPrecisionFormat" ||
-				originalFunctionName === "getShaderInfoLog" || 
-				originalFunctionName === "getShaderParameter";
-
-			// The structure of the extCallObject is -> { name: "", args: [], extId: ID } being extId optional and only
+			// The structure of the extCallObject is -> { name: "", args: [], webGL2OpenGLId: ID } being webGL2OpenGLId optional and only
 			// for certain calls.
 			var extCallObject = {
 				name: originalFunctionName,
@@ -77,16 +75,18 @@
 			if (originalFunctionName === "createShader" || 
 					originalFunctionName === "createProgram" ||
 					originalFunctionName === "getUniformLocation" ||
-					originalFunctionName === "getAttribLocation" ||
 					originalFunctionName === "createBuffer" ||
+					originalFunctionName === "createRenderbuffer" ||
+					originalFunctionName === "createFramebuffer" ||
 					originalFunctionName === "createTexture") {
-				// It could be that the call to the corresponding webgl original function was never done. In this case, 
 				if (originalFunctionCallResult === undefined) {
 					originalFunctionCallResult = {};				
 				}
-				originalFunctionCallResult.extId = Number(nextExtId);
-				extCallObject.extId = nextExtId;
-				nextExtId++;
+				if (typeof(originalFunctionCallResult) === "object" && originalFunctionCallResult !== null) {
+					originalFunctionCallResult.webGL2OpenGLId = Number(nextWebGL2OpenGLId);
+				}
+				extCallObject.webGL2OpenGLId = nextWebGL2OpenGLId;
+				nextWebGL2OpenGLId++;
 			}
 			// In the case of the 'bufferData' function, we need to identify the type of the array used and pass it to the native
 			// side using a 'dataTye' property in the call object
@@ -101,11 +101,10 @@
 				// 3.- void gl.texImage2D(target, level, internalformat, format, type, HTMLImageElement? pixels);
 				// 4.- void gl.texImage2D(target, level, internalformat, format, type, HTMLCanvasElement? pixels);
 				// 5.- void gl.texImage2D(target, level, internalformat, format, type, HTMLVideoElement? pixels);
-				if (argumentsArray.length > 6) {
-					// TODO: 
-				}
-				else {
+				if (argumentsArray.length === 6) {
+					// Let's assume that the parameter is a canvas
 					var canvas = argumentsArray[5];
+					// If it turns out to be an image, then create a canvas and draw the image into it.
 					if (argumentsArray[5] instanceof HTMLImageElement) {
 				        var image = argumentsArray[5];
 						canvas = document.createElement("canvas");
@@ -120,11 +119,25 @@
 				}
 			}
 
-			var extCallString = JSON.stringify(extCallObject);
 			if (ext) {
+				// Convert the extension call object to a string
+				var extCallString = JSON.stringify(extCallObject);
+
+				// These functons should be called in a synchronous way (makeCallSync) in the native side as they need to return a value.
+				var synch = 
+					originalFunctionName === "getParameter" || 
+					originalFunctionName === "getActiveAttrib" || 
+					originalFunctionName === "getActiveUniform" ||
+					originalFunctionName === "getAttribLocation" || 
+					originalFunctionName === "getProgramParameter" || 
+					originalFunctionName === "getShaderPrecisionFormat" ||
+					originalFunctionName === "getShaderInfoLog" || 
+					originalFunctionName === "getShaderParameter";
+
+				// Make the call to the extension
 				if (synch) {
 					originalFunctionCallResult = JSON.parse(ext.makeCallSync(extCallString));
-					// If the result is indeed a string, it will be provided inside an object so it is correctly escaped.
+					// If the result of the call needs to be a string, it will be provided inside an object so it is correctly escaped.
 					// The object will contain a property called 'webGL2OpenGLCallResultString'.
 					if (originalFunctionCallResult instanceof Object && typeof(originalFunctionCallResult.webGL2OpenGLCallResultString) !== "undefined") {
 						originalFunctionCallResult = originalFunctionCallResult.webGL2OpenGLCallResultString;
@@ -138,6 +151,8 @@
 			return originalFunctionCallResult;
 		}
 
+		// GL_CONSTANTS_AND_NAMES = {}; // Uncommet this line to provide a way to know the names of the GL constants.
+
 		function JudaXCanvasWebGLContext(originalWebGLContext, contextAttributes) {
 			for (var propertyName in originalWebGLContext) {
 				if (typeof(originalWebGLContext[propertyName]) === "function") {
@@ -146,27 +161,26 @@
 							var argumentsArray = Array.prototype.slice.apply(arguments);
 							var result = undefined;
 
-
-							if (originalFunctionName === "uniformMatrix4fv") {
-								console.log("uniformMatrix4fv");
-							}
-
-
 							// IMPORTANT: Why should we call WebGL to do anything? Do not make the calls unless specified!
 							if (makeOriginalWebGLCalls) {
 								result = originalFunction.apply(originalWebGLContext, argumentsArray);
-								console.log("JUDAX: WebGL call to '" + originalFunctionName + "' intercepted! Original call result = " + result);
 								processExtensionCall(originalFunctionName, result, argumentsArray);
 							}
 							else {
 								result = processExtensionCall(originalFunctionName, result, argumentsArray);
 							}
+
+							// console.log("JUDAX: " + originalFunctionName + "(" + JSON.stringify(argumentsArray) + ") intercepted! Original call result = " + result); // Uncommend this line to show the WebGL 2 OpenGL call and its result
+
 							return result;
 						};
 					})(propertyName, originalWebGLContext[propertyName]);
 				}
 				else {
 					this[propertyName] = originalWebGLContext[propertyName];
+
+					// GL_CONSTANTS_AND_NAMES[this[propertyName]] = propertyName; // Uncomment this line to provide a way to know the names of the GL constants.
+
 					// this.__defineGetter__(propertyName, (function(originalPropertyName) {
 					// 	return function() {
 					// 		// console.log("JUDAX: WebGL property '" + originalPropertyName + "' reading intercepted!");
@@ -195,6 +209,7 @@
 			}
 			return this;
 		}
+
 		HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
 			var argumentsArray = Array.prototype.slice.apply(arguments);
 			var context = originalHTMLCanvasElementPrototypeGetContextFunction.apply(this, argumentsArray);
@@ -204,5 +219,5 @@
 			}
 			return context;
 		};
-	}
+	// }
 })();
