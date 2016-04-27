@@ -39,8 +39,12 @@ public class WebGLMessage implements Runnable
   {
   	projectionMatrixUniformNames.add("uProjectionMatrix");
   	projectionMatrixUniformNames.add("uPMatrix");
+  	projectionMatrixUniformNames.add("projectionMatrix"); // ThreeJS
+  	projectionMatrixUniformNames.add("matrix_projection"); // PlayCanvas
   	
   	modelViewMatrixUniformNames.add("uMVMatrix");
+  	modelViewMatrixUniformNames.add("modelViewMatrix"); // ThreeJS
+  	modelViewMatrixUniformNames.add("matrix_view"); // PlayCanvas
   }
   
 	private static float[] projectionMatrix = new float[16];
@@ -50,22 +54,50 @@ public class WebGLMessage implements Runnable
 	private static boolean unpackPremultiplyAlpha = false;
 	private static boolean unpackFlipY = false;
 	
-	private static float[] fromJSONObjectToFloatArray(JSONObject jsonObject) throws JSONException
+	private static float[] fromObjectToFloatArray(Object object) throws JSONException
 	{
-		float[] values = new float[jsonObject.length()];
-		fromJSONObjectToFloatArray(jsonObject, values);
+		float[] values = null;
+		if (object instanceof JSONObject)
+		{
+			JSONObject jsonObject = (JSONObject)object;
+			values = new float[jsonObject.length()];
+		}
+		else if (object instanceof JSONArray)
+		{
+			JSONArray jsonArray = (JSONArray)object;
+			values = new float[jsonArray.length()];
+		}
+		else 
+		{
+			throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+		}
+		fromObjectToFloatArray(object, values);
 		return values;
 	}
 
-	private static void fromJSONObjectToFloatArray(JSONObject jsonObject, float[] values) throws JSONException
+	private static void fromObjectToFloatArray(Object object, float[] values) throws JSONException
 	{
 		for (int i = 0; i < values.length; i++) 
 		{
-			Object o = jsonObject.get("" + i);
+			Object o = null;
+			if (object instanceof JSONObject)
+			{
+				JSONObject jsonObject = (JSONObject)object;
+				o = jsonObject.get("" + i);
+			}
+			else if (object instanceof JSONArray)
+			{
+				JSONArray jsonArray = (JSONArray)object;
+				o = jsonArray.get(i);
+			}
+			else 
+			{
+				throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+			}
 			float value = 0;
 			if (o instanceof Number)
 			{
-				value = ((Number)jsonObject.get("" + i)).floatValue();
+				value = ((Number)o).floatValue();
 			}
 			values[i] = value;
 		}
@@ -80,20 +112,102 @@ public class WebGLMessage implements Runnable
 		// =========================================
 	}
 	
-	private static short[] fromJSONObjectToShortArray(JSONObject jsonObject) throws JSONException
+	private static short[] fromObjectToShortArray(Object object) throws JSONException
 	{
-		short[] values = new short[jsonObject.length()];
+		short[] values = null;
+		if (object instanceof JSONObject)
+		{
+			JSONObject jsonObject = (JSONObject)object;
+			values = new short[jsonObject.length()];
+		}
+		else if (object instanceof JSONArray)
+		{
+			JSONArray jsonArray = (JSONArray)object;
+			values = new short[jsonArray.length()];
+		}
+		else 
+		{
+			throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+		}
+		fromObjectToShortArray(object, values);
+		return values;
+	}
+	
+	private static void fromObjectToShortArray(Object object, short[] values) throws JSONException
+	{
 		for (int i = 0; i < values.length; i++) 
 		{
-			Object o = jsonObject.get("" + i);
+			Object o = null;
+			if (object instanceof JSONObject)
+			{
+				JSONObject jsonObject = (JSONObject)object;
+				o = jsonObject.get("" + i);
+			}
+			else if (object instanceof JSONArray)
+			{
+				JSONArray jsonArray = (JSONArray)object;
+				o = jsonArray.get(i);
+			}
+			else 
+			{
+				throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+			}
 			short value = 0;
 			if (o instanceof Number)
 			{
-				value = ((Number)jsonObject.get("" + i)).shortValue();
+				value = ((Number)o).shortValue();
 			}
 			values[i] = value;
 		}
+	}
+	
+	private static int[] fromObjectToIntArray(Object object) throws JSONException
+	{
+		int[] values = null;
+		if (object instanceof JSONObject)
+		{
+			JSONObject jsonObject = (JSONObject)object;
+			values = new int[jsonObject.length()];
+		}
+		else if (object instanceof JSONArray)
+		{
+			JSONArray jsonArray = (JSONArray)object;
+			values = new int[jsonArray.length()];
+		}
+		else 
+		{
+			throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+		}
+		fromObjectToIntArray(object, values);
 		return values;
+	}
+	
+	private static void fromObjectToIntArray(Object object, int[] values) throws JSONException
+	{
+		for (int i = 0; i < values.length; i++) 
+		{
+			Object o = null;
+			if (object instanceof JSONObject)
+			{
+				JSONObject jsonObject = (JSONObject)object;
+				o = jsonObject.get("" + i);
+			}
+			else if (object instanceof JSONArray)
+			{
+				JSONArray jsonArray = (JSONArray)object;
+				o = jsonArray.get(i);
+			}
+			else 
+			{
+				throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+			}
+			int value = 0;
+			if (o instanceof Number)
+			{
+				value = ((Number)o).intValue();
+			}
+			values[i] = value;
+		}
 	}
 	
 	private static String fromWebGLNameToOpenGLName(String webGLFunctionName)
@@ -135,10 +249,11 @@ public class WebGLMessage implements Runnable
 				webGLFunctionName.equals("getParameter") ||
 				webGLFunctionName.equals("getActiveAttrib") ||
 				webGLFunctionName.equals("getActiveUniform") ||
-				webGLFunctionName.equals("getShaderInfoLog") ||
-				webGLFunctionName.equals("getShaderParameter") ||
+				webGLFunctionName.equals("getAttribLocation") || // This is a special case. The WebGL spec forces it to return a GLint so let's comply with the spec in case an engine is expecting that value
+				webGLFunctionName.equals("getProgramParameter") ||
 				webGLFunctionName.equals("getShaderPrecisionFormat") ||
-				webGLFunctionName.equals("getProgramParameter");
+				webGLFunctionName.equals("getShaderInfoLog") ||
+				webGLFunctionName.equals("getShaderParameter");
 	}
 	
 	public String fromWebGL2OpenGL()
@@ -172,7 +287,7 @@ public class WebGLMessage implements Runnable
 			
 			// Some calls are very specific. 
 			// The call to "createBuffer" does not have a direct match in native but to call "glGenBuffers" to create just one buffer.
-			if (webGLFunctionName.equals("createBuffer") || webGLFunctionName.equals("createTexture"))
+			if (webGLFunctionName.equals("createBuffer") || webGLFunctionName.equals("createTexture") || webGLFunctionName.equals("createFramebuffer") || webGLFunctionName.equals("createRenderbuffer"))
 			{
 				int[] ids = new int[1];
 				if (webGLFunctionName.equals("createBuffer"))
@@ -195,11 +310,32 @@ public class WebGLMessage implements Runnable
 					}
 					// =========================================
 				}
+				else if (webGLFunctionName.equals("createFramebuffer"))
+				{
+					GLES20.glGenFramebuffers(1, ids, 0);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glGenFramebuffers(1, " + ids + ", 0) -> " + ids[0]);
+					}
+					// =========================================
+				}
+				else if (webGLFunctionName.equals("createRenderbuffer"))
+				{
+					GLES20.glGenRenderbuffers(1, ids, 0);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glGenRenderbuffers(1, " + ids + ", 0) -> " + ids[0]);
+					}
+					// =========================================
+				}
 				// Make a association between the native id for the buffer and the id passed from the JS side.
-				int jsId = messageJSON.getInt("extId");
+				int jsId = messageJSON.getInt("webGL2OpenGLId");
 				int nativeId = ids[0]; 
 				jsIdsToNativeIds.put(jsId, nativeId);
 			}
+			// There is no 'getParameter' in OpenGL. Match to the corresponding 'glGetXXX' function.
 			else if (webGLFunctionName.equals("getParameter"))
 			{
 				int target = webGLFunctionArgs.getInt(0);
@@ -340,11 +476,16 @@ public class WebGLMessage implements Runnable
 						resultString = "" + values[0];
 					}
 				}
-        System.out.println("JUDAX: getParameter(" + target + ") -> " + resultString + " - " + message);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: getParameter(" + target + ") -> " + resultString + " - " + message);
+				}
+				// =========================================
 			}
 			else if (webGLFunctionName.equals("getProgramParameter"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int program = jsIdsToNativeIds.get(jsId);
 				int param = webGLFunctionArgs.getInt(1);
 				int[] values = new int[1];
@@ -359,11 +500,16 @@ public class WebGLMessage implements Runnable
             default: 
             	resultString = "" + values[0];
         }
-        System.out.println("JUDAX: getProgramParameter(" + program + ", " + param + ") -> " + resultString + " - " + message);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: getProgramParameter(" + program + ", " + param + ") -> " + resultString + " - " + message);
+				}
+				// =========================================
 			}
 			else if (webGLFunctionName.equals("getShaderParameter"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int shader = jsIdsToNativeIds.get(jsId);
 				int param = webGLFunctionArgs.getInt(1);
 				int[] values = new int[1];
@@ -377,7 +523,12 @@ public class WebGLMessage implements Runnable
             default: 
             	resultString = "" + values[0];
         }
-        System.out.println("JUDAX: getShaderParameter(" + shader + ", " + param + ") -> " + resultString + " - " + message);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: getShaderParameter(" + shader + ", " + param + ") -> " + resultString + " - " + message);
+				}
+				// =========================================
 			}
 			else if (webGLFunctionName.equals("getShaderPrecisionFormat"))
 			{
@@ -391,11 +542,16 @@ public class WebGLMessage implements Runnable
 				resultJSONObject.put("rangeMax", range[1]);
 				resultJSONObject.put("precision", precision[0]);
 				resultString = resultJSONObject.toString();
-				System.out.println("JUDAX: getShaderPrecisionFormat(" + shaderType + ", " + precisionType + ") -> " + resultString);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: getShaderPrecisionFormat(" + shaderType + ", " + precisionType + ") -> " + resultString);
+				}
+				// =========================================
 			}
 			else if (webGLFunctionName.equals("getActiveAttrib") || webGLFunctionName.equals("getActiveUniform"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int program = jsIdsToNativeIds.get(jsId);
 				int index = webGLFunctionArgs.getInt(1);
 				byte[] name = new byte[500];
@@ -419,29 +575,6 @@ public class WebGLMessage implements Runnable
 				if (VERBOSE)
 				{
 					System.out.println("JUDAX: " + fromWebGLNameToOpenGLName(webGLFunctionName) + "(" + program + ", " + index + ") -> " + resultString);
-				}
-				// =========================================
-			}
-			else if (webGLFunctionName.equals("getActiveUniform"))
-			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
-				int program = jsIdsToNativeIds.get(jsId);
-				int index = webGLFunctionArgs.getInt(1);
-				byte[] name = new byte[500];
-				int[] length = new int[1];
-				int[] size = new int[1];
-				int[] type = new int[1];
-				GLES20.glGetActiveAttrib(program, index, name.length, length, 0, size, 0, type, 0, name, 0);
-				System.out.println("JUDAX: 2: " + length[0] + ", " + new String(name));
-				JSONObject resultJSONObject = new JSONObject();
-				resultJSONObject.put("size", size[0]);
-				resultJSONObject.put("type", type[0]);
-				resultJSONObject.put("name", new String(name, 0, length[0]));
-				resultString = resultJSONObject.toString();
-				// =========================================
-				if (VERBOSE)
-				{
-					System.out.println("JUDAX: getActiveAttrib(" + program + ", " + index + ") -> " + resultString);
 				}
 				// =========================================
 			}
@@ -487,42 +620,61 @@ public class WebGLMessage implements Runnable
 			}
 			else if (webGLFunctionName.equals("texImage2D"))
 			{
-				String base64 = webGLFunctionArgs.getString(5);
 				int target = webGLFunctionArgs.getInt(0);
 				int level = webGLFunctionArgs.getInt(1);
 				int internalFormat = webGLFunctionArgs.getInt(2);
-				int type = webGLFunctionArgs.getInt(4);
+				int type = 0;
 				int border = 0;
-				byte[] values = Base64.decode(base64, Base64.DEFAULT);
-				final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inScaled = false;				
-				Bitmap bitmap = BitmapFactory.decodeByteArray(values, 0, values.length, options);
-				if (unpackFlipY)
+				if (webGLFunctionArgs.length() == 6)
 				{
-					android.graphics.Matrix m = new android.graphics.Matrix();
-			    m.preScale(1, -1);
-			    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, false);
-//			    bitmap.setDensity(DisplayMetrics.DENSITY_DEFAULT);
-			  }
-				GLUtils.texImage2D(target, level, internalFormat, bitmap, type, border);
-				bitmap.recycle();
-				// =========================================
-				if (VERBOSE)
-				{
-					System.out.println("JUDAX: glTexImage2D(" + target + ", " + level + ", " + internalFormat + ", " + bitmap + ", " + type + ", " + border + ")");
+					type = webGLFunctionArgs.getInt(4);
+					String base64 = webGLFunctionArgs.getString(5);
+					byte[] values = Base64.decode(base64, Base64.DEFAULT);
+					final BitmapFactory.Options options = new BitmapFactory.Options();
+	        options.inScaled = false;				
+					Bitmap bitmap = BitmapFactory.decodeByteArray(values, 0, values.length, options);
+					if (unpackFlipY)
+					{
+						android.graphics.Matrix m = new android.graphics.Matrix();
+				    m.preScale(1, -1);
+				    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, false);
+//				    bitmap.setDensity(DisplayMetrics.DENSITY_DEFAULT);
+				  }
+					GLUtils.texImage2D(target, level, internalFormat, bitmap, type, border);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glTexImage2D(" + target + ", " + level + ", " + internalFormat + ", " + bitmap + ", " + type + ", " + border + ")");
+					}
+					// =========================================
+					bitmap.recycle();
 				}
-				// =========================================
+				else if (webGLFunctionArgs.length() == 9)
+				{
+					int width = webGLFunctionArgs.getInt(3);
+					int height = webGLFunctionArgs.getInt(4);
+					border = webGLFunctionArgs.getInt(5);
+					int format = webGLFunctionArgs.getInt(6); 
+					type = webGLFunctionArgs.getInt(7);
+					GLES20.glTexImage2D(target, level, internalFormat, width, height, border, format, type, null);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glTexImage2D(" + target + ", " + level + ", " + internalFormat + ", " + width + ", " + height + ", " + border + ", " + format + ", " + type + ", " + null + ")");
+					}
+					// =========================================
+				}
 			}
 			// The call to "bufferData" requires a very specific conversion of the values array and creation of the corresponding buffer.
 			else if (webGLFunctionName.equals("bufferData"))
 			{
-				JSONObject valuesJSONObject = webGLFunctionArgs.getJSONObject(1);
+				Object valuesObject = webGLFunctionArgs.get(1);
 				int dataType = messageJSON.getInt("dataType");
 				int target = webGLFunctionArgs.getInt(0);
 				int usage = webGLFunctionArgs.getInt(2);
 				if (dataType == GLES20.GL_FLOAT) 
 				{
-					float[] values = fromJSONObjectToFloatArray(valuesJSONObject);
+					float[] values = fromObjectToFloatArray(valuesObject);
 					FloatBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_FLOAT)
 							.order(ByteOrder.nativeOrder())
 							.asFloatBuffer();
@@ -537,7 +689,7 @@ public class WebGLMessage implements Runnable
 				}
 				else if (dataType == GLES20.GL_SHORT)
 				{
-					short[] values = fromJSONObjectToShortArray(valuesJSONObject);
+					short[] values = fromObjectToShortArray(valuesObject);
 					ShortBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_SHORT)
 							.order(ByteOrder.nativeOrder())
 							.asShortBuffer();
@@ -551,28 +703,19 @@ public class WebGLMessage implements Runnable
 					// =========================================
 				}
 			}
-			else if (webGLFunctionName.equals("uniform1f"))
-			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
-				int location = jsIdsToNativeIds.get(jsId);
-				float value = (float)webGLFunctionArgs.getDouble(1);
-				GLES20.glUniform1f(location, value);
-				// =========================================
-				if (VERBOSE)
-				{
-					System.out.println("JUDAX: glUniform1f(" + location + ", " + value + ")");
-				}
-				// =========================================
-			}
 			else if (webGLFunctionName.equals("uniform1i"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
 				int value;
 				Object o = webGLFunctionArgs.get(1);
 				if (o instanceof Boolean)
 				{
 					value = (Boolean)o ? 1 : 0;
+				}
+				else if (JSONObject.NULL.equals(o))
+				{
+					value = 0;
 				}
 				else 
 				{
@@ -586,9 +729,66 @@ public class WebGLMessage implements Runnable
 				}
 				// =========================================
 			}
+			else if (webGLFunctionName.equals("uniform1iv") || webGLFunctionName.equals("uniform2iv") || webGLFunctionName.equals("uniform3iv") ||webGLFunctionName.equals("uniform4iv"))
+			{
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
+				int location = jsIdsToNativeIds.get(jsId);
+				int[] values = fromObjectToIntArray(webGLFunctionArgs.get(1));
+				int count = 1;
+				int offset = 0;
+				if (webGLFunctionName.equals("uniform1iv"))
+				{
+					GLES20.glUniform1iv(location, count, values, offset);
+				}
+				else if (webGLFunctionName.equals("uniform2iv"))
+				{
+					GLES20.glUniform2iv(location, count, values, offset);
+				}				
+				else if (webGLFunctionName.equals("uniform3iv"))
+				{
+					GLES20.glUniform3iv(location, count, values, offset);
+				}
+				else if (webGLFunctionName.equals("uniform4iv"))
+				{
+					GLES20.glUniform4iv(location, count, values, offset);
+				}
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: " + fromWebGLNameToOpenGLName(webGLFunctionName) + "(" + location + ", " + values + ", " + offset + ")");
+				}
+				// =========================================
+			}
+			else if (webGLFunctionName.equals("uniform1f"))
+			{
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
+				int location = jsIdsToNativeIds.get(jsId);
+				float v1 = (float)webGLFunctionArgs.getDouble(1);
+				GLES20.glUniform1f(location, v1);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: glUniform1f(" + location + ", " + v1 + ")");
+				}
+				// =========================================
+			}
+			else if (webGLFunctionName.equals("uniform2f"))
+			{
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
+				int location = jsIdsToNativeIds.get(jsId);
+				float v1 = (float)webGLFunctionArgs.getDouble(1);
+				float v2 = (float)webGLFunctionArgs.getDouble(2);
+				GLES20.glUniform2f(location, v1, v2);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: glUniform2f(" + location + ", " + v1 + ", " + v2 + ")");
+				}
+				// =========================================
+			}
 			else if (webGLFunctionName.equals("uniform3f"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
 				float v1 = (float)webGLFunctionArgs.getDouble(1);
 				float v2 = (float)webGLFunctionArgs.getDouble(2);
@@ -601,28 +801,59 @@ public class WebGLMessage implements Runnable
 				}
 				// =========================================
 			}
-			else if (webGLFunctionName.equals("uniform3fv"))
+			else if (webGLFunctionName.equals("uniform4f"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
-				float[] values = fromJSONObjectToFloatArray(webGLFunctionArgs.getJSONObject(1));
-				int count = 1;
-				int offset = 0;
-				GLES20.glUniform3fv(location, count, values, offset);
+				float v1 = (float)webGLFunctionArgs.getDouble(1);
+				float v2 = (float)webGLFunctionArgs.getDouble(2);
+				float v3 = (float)webGLFunctionArgs.getDouble(3);
+				float v4 = (float)webGLFunctionArgs.getDouble(4);
+				GLES20.glUniform4f(location, v1, v2, v3, v4);
 				// =========================================
 				if (VERBOSE)
 				{
-					System.out.println("JUDAX: glUniform3fv(" + location + ", " + values + ", " + offset + ")");
+					System.out.println("JUDAX: glUniform4f(" + location + ", " + v1 + ", " + v2 + ", " + v3 + ", " + v4 + ")");
+				}
+				// =========================================
+			}
+			else if (webGLFunctionName.equals("uniform1fv") || webGLFunctionName.equals("uniform2fv") || webGLFunctionName.equals("uniform3fv") || webGLFunctionName.equals("uniform4fv"))
+			{
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
+				int location = jsIdsToNativeIds.get(jsId);
+				float[] values = fromObjectToFloatArray(webGLFunctionArgs.get(1));
+				int count = 1;
+				int offset = 0;
+				if (webGLFunctionName.equals("uniform1fv"))
+				{
+					GLES20.glUniform1fv(location, count, values, offset);
+				}
+				else if (webGLFunctionName.equals("uniform2fv"))
+				{
+					GLES20.glUniform2fv(location, count, values, offset);
+				}				
+				else if (webGLFunctionName.equals("uniform3fv"))
+				{
+					GLES20.glUniform3fv(location, count, values, offset);
+				}
+				else if (webGLFunctionName.equals("uniform4fv"))
+				{
+					GLES20.glUniform4fv(location, count, values, offset);
+				}
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: " + fromWebGLNameToOpenGLName(webGLFunctionName) + "(" + location + ", " + values + ", " + offset + ")");
 				}
 				// =========================================
 			}
 			else if (webGLFunctionName.equals("uniformMatrix3fv"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
 				int count = 1;
 				boolean transpose = webGLFunctionArgs.getBoolean(1);
-				float[] values = fromJSONObjectToFloatArray(webGLFunctionArgs.getJSONObject(2));
+				float[] values = fromObjectToFloatArray(webGLFunctionArgs.get(2));
 				int offset = 0;
 				GLES20.glUniformMatrix3fv(location, count, transpose, values, offset);
 				// =========================================
@@ -635,7 +866,7 @@ public class WebGLMessage implements Runnable
 			// The call to "uniformMatrix4fv" requires a very specific conversion of parameters.
 			else if (webGLFunctionName.equals("uniformMatrix4fv"))
 			{
-				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("extId");
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
 				int count = 1;
 				boolean transpose = webGLFunctionArgs.getBoolean(1);
@@ -647,12 +878,12 @@ public class WebGLMessage implements Runnable
 				}
 				else if (modelViewMatrixUniformsJSIds.contains(jsId))
 				{
-					values = fromJSONObjectToFloatArray(webGLFunctionArgs.getJSONObject(2));
+					values = fromObjectToFloatArray(webGLFunctionArgs.get(2));
 					Matrix.multiplyMM(values, 0, modelViewMatrix, 0, values, 0);
 				}
 				else
 				{
-					values = fromJSONObjectToFloatArray(webGLFunctionArgs.getJSONObject(2));
+					values = fromObjectToFloatArray(webGLFunctionArgs.get(2));
 				}
 				int offset = 0;
 				GLES20.glUniformMatrix4fv(location, count, transpose, values, offset);
@@ -697,11 +928,11 @@ public class WebGLMessage implements Runnable
 						{
 							// If a JSON object has been passed as an argument 
 							JSONObject argJSONObject = (JSONObject)arg;
-							// Check if the JSON object has the extId property and if so, consider it to be an id of a shader, program, uniform, ...
-							if (argJSONObject.has("extId"))
+							// Check if the JSON object has the 'webGL2OpenGLId' property and if so, consider it to be an id of a shader, program, uniform, ...
+							if (argJSONObject.has("webGL2OpenGLId"))
 							{
 								argsClasses[i] = int.class;
-								int jsId = argJSONObject.getInt("extId");
+								int jsId = argJSONObject.getInt("webGL2OpenGLId");
 								int nativeId = jsIdsToNativeIds.get(jsId);
 								argsObjects[i] = nativeId; 
 							}
@@ -754,10 +985,9 @@ public class WebGLMessage implements Runnable
 				// These JS functions pass a JS id that should be matched to the native id.
 				if (webGLFunctionName.equals("createShader") || 
 						webGLFunctionName.equals("createProgram") ||
-						webGLFunctionName.equals("getUniformLocation") ||
-						webGLFunctionName.equals("getAttribLocation")) {
-					// The jsId comes in the form of a separate property in the messageJSON structure (extId)
-					int jsId = messageJSON.getInt("extId");
+						webGLFunctionName.equals("getUniformLocation")) {
+					// The jsId comes in the form of a separate property in the messageJSON structure (with an attribute called 'webGL2OpenGLId')
+					int jsId = messageJSON.getInt("webGL2OpenGLId");
 					int nativeId = (Integer)result; 
 					jsIdsToNativeIds.put(jsId, nativeId);
 					
