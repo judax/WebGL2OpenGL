@@ -25,7 +25,7 @@
 				ext.makeCallAsync("startFrame");
 			}
 			var argumentsArray = Array.prototype.slice.apply(arguments);
-			judaxRequestAnimationFrameCallbacks[0].apply(window, argumentsArray);
+			judaxRequestAnimationFrameCallbacks[0].apply(this, argumentsArray);
 			judaxRequestAnimationFrameCallbacks.splice(0, 1);
 			if (ext) {
 				ext.makeCallAsync("endFrame");
@@ -102,19 +102,23 @@
 				// 4.- void gl.texImage2D(target, level, internalformat, format, type, HTMLCanvasElement? pixels);
 				// 5.- void gl.texImage2D(target, level, internalformat, format, type, HTMLVideoElement? pixels);
 				if (argumentsArray.length === 6) {
-					// Let's assume that the parameter is a canvas
-					var canvas = argumentsArray[5];
-					// If it turns out to be an image, then create a canvas and draw the image into it.
-					if (argumentsArray[5] instanceof HTMLImageElement) {
-				        var image = argumentsArray[5];
-						canvas = document.createElement("canvas");
-						canvas.width = image.width;
-						canvas.height = image.height;
-						var canvas2DContext = canvas.getContext("2d");
-						canvas2DContext.drawImage(image, 0, 0);
+					if (argumentsArray[5] instanceof HTMLImageElement || argumentsArray[5] instanceof HTMLCanvasElement) {
+						// Let's assume that the parameter is a canvas.
+						var canvas = argumentsArray[5]
+						// If it turns out to be an image, then create a canvas and draw the image into it.
+						if (canvas instanceof HTMLImageElement) {
+					        var image = argumentsArray[5];
+							canvas = document.createElement("canvas");
+							canvas.width = image.width;
+							canvas.height = image.height;
+							var canvas2DContext = canvas.getContext("2d");
+							canvas2DContext.drawImage(image, 0, 0);
+						}
+						var canvasInBase64 = canvas.toDataURL();
+						argumentsArray[5] = canvasInBase64.substr(canvasInBase64.indexOf(',') + 1);
 					}
-					var canvasInBase64 = canvas.toDataURL();
-					argumentsArray[5] = canvasInBase64.substr(canvasInBase64.indexOf(',') + 1);
+					else if (argumentsArray[5] instanceof HTMLVideoElement) {
+					}
 					// TODO: Still 2 calls are not being handled: the ones that pass these parameters. ImageData and HTMLVideoElement
 				}
 			}
