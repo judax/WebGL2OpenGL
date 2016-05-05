@@ -118,6 +118,7 @@ public class URLEntryActivity extends Activity
 		{
 			urlHistoryURLs.put(url);
 			urlHistoryListViewAdapter.add(url);
+			urlHistoryListViewAdapter.notifyDataSetChanged();					
 		}
 	}
 	
@@ -203,6 +204,7 @@ public class URLEntryActivity extends Activity
 					{
 						urlHistoryListViewAdapter.remove(url);
 					}
+					urlHistoryListViewAdapter.notifyDataSetChanged();					
 					savePreferences();
 					clearURLHistoryButton.setEnabled(urlHistoryURLs.length() > 0);
 				}
@@ -229,6 +231,7 @@ public class URLEntryActivity extends Activity
 						case AlertDialog.BUTTON_POSITIVE:
 							urlHistoryURLs = new JSONArray();
 							urlHistoryListViewAdapter.clear();
+							urlHistoryListViewAdapter.notifyDataSetChanged();					
 				  		savePreferences();
 				  		clearURLHistoryButton.setEnabled(urlHistoryURLs.length() > 0);
 							break;
@@ -304,6 +307,7 @@ public class URLEntryActivity extends Activity
 				urlHistoryListViewEntryTextView.setText(urlHistoryURLs.getString(position));
 				CheckBox urlHistoryListViewEntryCheckBox = (CheckBox)view.findViewById(R.id.urlHistoryEntryCheckbox);
 				urlHistoryListViewEntryCheckBox.setTag(position);
+				urlHistoryListViewEntryCheckBox.setChecked(false);
 				urlHistoryListViewEntryCheckBox.setOnCheckedChangeListener(checkedChangeListener);
 			}
 			catch(JSONException e)
@@ -311,6 +315,6 @@ public class URLEntryActivity extends Activity
 	  		createAlertDialog(this.getContext(), "JSON Exception", "JSONException accesing element at index '" + position + "' of the URL History JSON array. " + e.getMessage(), null, 1, "Ok", null, null).show();
 			}
 			return view;
-		}			
+		}
 	}
 }
