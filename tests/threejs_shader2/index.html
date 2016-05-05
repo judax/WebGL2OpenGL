@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-	    <!-- Error handling -->
-	    <script>
-	        window.addEventListener('error', function(event) {
-	            var errorMessage = event.message;
-	            var url = event.filename;
-	            var lineNumber = event.lineno;
-	            var columnNumber = event.colno;
-	            alert("ERROR: " + errorMessage + " at " + url + " : " + lineNumber + " : " + columnNumber);
-	        });
-	    </script>
-
-	    <script src="../../js/WebGL2OpenGL.js"></script>
-    
 		<title>three.js webgl - materials - shaders [custom]</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -49,7 +36,31 @@
 		<div id="container"></div>
 		<div id="info"><a href="http://threejs.org" target="_blank">three.js</a> - shader material demo. featuring <a href="http://www.pouet.net/prod.php?which=52761" target="_blank">Monjori by Mic</a></div>
 
-		<script src="../threejs/three.74.js"></script>
+
+		<script src="../threejs/three.76.js"></script>
+
+		<script>
+			// WebVRConfig = { ENABLE_DEPRECATED_API: true };
+		</script>
+
+
+	    <!-- Error handling -->
+	    <script>
+	        window.addEventListener('error', function(event) {
+	            var errorMessage = event.message;
+	            var url = event.filename;
+	            var lineNumber = event.lineno;
+	            var columnNumber = event.colno;
+	            alert("ERROR: " + errorMessage + " at " + url + " : " + lineNumber + " : " + columnNumber);
+	        });
+	    </script>
+
+	    <script src="../../js/WebGL2OpenGL.js"></script>
+		<!-- <script src="/OculusMobileSDKHeadTrackingWebVR/js/OculusMobileSDKHeadTrackingWebVR.js"></script> -->
+	    <script src="../threejs/webvr-polyfill.js"></script>
+
+	    <script src="../threejs/VREffect.js"></script>
+	    <script src="../threejs/VRControls.js"></script>
 
 		<script src="../threejs/Detector.js"></script>
 		<script src="../threejs/stats.min.js"></script>
@@ -190,6 +201,10 @@
 
 			var clock = new THREE.Clock();
 
+			var vrControls, vrEffect;
+
+			var fullscreen = false;
+
 			init();
 			animate();
 
@@ -198,9 +213,9 @@
 				container = document.getElementById( 'container' );
 
 				camera = new THREE.PerspectiveCamera( 40, window.innerWidth / window.innerHeight, 1, 3000 );
-				camera.position.z = 4;
 
 				scene = new THREE.Scene();
+				scene.position.z = -5;
 
 				var geometry = new THREE.BoxGeometry( 0.75, 0.75, 0.75 );
 
@@ -250,10 +265,27 @@
 				stats.domElement.style.top = '0px';
 				container.appendChild( stats.domElement );
 
+				if (typeof(window.WebGLXWalkExtension) === "undefined") {
+	                vrControls = new THREE.VRControls( camera );
+	                vrEffect = new THREE.VREffect( renderer );
+					vrEffect.setSize( window.innerWidth, window.innerHeight );
+	                window.addEventListener("click", function() {
+	                	if (!fullscreen) {
+	                		vrEffect.requestPresent(false);
+	                		// enterFullscreen(renderer.domElement);
+	                		fullscreen = true;
+	                	}
+	                	else {
+	                		vrEffect.exitPresent();
+	                		// exitFullscreen(renderer.domElement);
+	                		fullscreen = false;
+	                	}
+	                });
+				}
+
 				onWindowResize();
 
 				window.addEventListener( 'resize', onWindowResize, false );
-
 			}
 
 			function onWindowResize( event ) {
@@ -267,18 +299,27 @@
 				camera.aspect = window.innerWidth / window.innerHeight;
 				camera.updateProjectionMatrix();
 
-				renderer.setSize( window.innerWidth, window.innerHeight );
-
+				if (vrEffect) {
+                	vrEffect.setSize( window.innerWidth, window.innerHeight );
+                }
+                else {
+					renderer.setSize( window.innerWidth, window.innerHeight );
+                }
 			}
 
 			//
 
 			function animate() {
 
-				requestAnimationFrame( animate );
+				stats.update();
+
+				if (vrControls) {
+                    vrControls.update();
+				}
 
 				render();
-				stats.update();
+
+				requestAnimationFrame( animate );
 
 			}
 
@@ -298,10 +339,38 @@
 
 				}
 
-				renderer.render( scene, camera );
+				if (vrEffect) {
+                    vrEffect.render( scene, camera );
+                }
+                else {
+					renderer.render( scene, camera );
+				}
 
 			}
 
+			function enterFullscreen (el) {
+				if (el.requestFullscreen) {
+					el.requestFullscreen();
+				} else if (el.mozRequestFullScreen) {
+					el.mozRequestFullScreen();
+				} else if (el.webkitRequestFullscreen) {
+					el.webkitRequestFullscreen();
+				} else if (el.msRequestFullscreen) {
+					el.msRequestFullscreen();
+				}
+			}
+
+			function exitFullscreen (el) {
+				if (el.cancelFullscreen) {
+					el.cancelFullscreen();
+				} else if (el.mozCancelFullScreen) {
+					el.mozCancelFullScreen();
+				} else if (document.webkitExitFullscreen) {
+					document.webkitExitFullscreen();
+				} else if (el.msExitFullscreen) {
+					el.msExitFullscreen();
+				}
+			}
 		</script>
 
 	</body>
