@@ -1,9 +1,5 @@
 package com.judax.webgl2opengl.xwalk;
 
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-
 import org.xwalk.core.XWalkExtension;
 
 import com.judax.webgl2opengl.WebGLMessage;
@@ -82,8 +78,12 @@ public class WebGLXWalkExtension
 			{
 				try
 				{
+//					long startTime = System.nanoTime();
 					WebGLMessage webGLMessage = new WebGLMessage(message);
 					result = webGLMessageProcessor.queueWebGLMessage(webGLMessage);
+//					long endTime = System.nanoTime();
+//					long elapsedTime = endTime - startTime;
+//					System.out.println("JUDAX: " + (elapsedTime / 1000000.0) + " millis to process a message");
 				}
 				catch(Exception e)
 				{
