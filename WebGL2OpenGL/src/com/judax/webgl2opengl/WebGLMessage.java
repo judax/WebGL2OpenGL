@@ -222,14 +222,6 @@ public class WebGLMessage implements Runnable
 	private JSONArray webGLFunctionArgs = null;
 	private JSONArray supportedExtensions = null;
 
-	public WebGLMessage(String message) throws Exception
-	{
-		this.message = message;
-		this.messageJSON = new JSONObject(message);
-		this.webGLFunctionName = messageJSON.getString("name");
-		this.webGLFunctionArgs = messageJSON.getJSONArray("args");
-	}
-	
 	private void getSupportedExtensions()
 	{
 		supportedExtensions = new JSONArray();
@@ -240,6 +232,14 @@ public class WebGLMessage implements Runnable
 			supportedExtensions.put(supportedExtensionsStringArray[i]);
 //			System.out.println("JUDAX: Extension " + supportedExtensionsStringArray[i] + " supported");
 		}
+	}
+	
+	public WebGLMessage(String message) throws Exception
+	{
+		this.message = message;
+		this.messageJSON = new JSONObject(message);
+		this.webGLFunctionName = messageJSON.getString("name");
+		this.webGLFunctionArgs = messageJSON.getJSONArray("args");
 	}
 	
 	public boolean isSynchronous()
