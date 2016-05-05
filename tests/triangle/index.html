@@ -88,7 +88,7 @@
         gl.compileShader(shader);
 
         var result = gl.getShaderParameter(shader, gl.COMPILE_STATUS)
-        alert("getShaderParameter result = " + result);
+        // alert("getShaderParameter result = " + result);
         if (!result) {
             alert(gl.getShaderInfoLog(shader));
             return null;
@@ -110,7 +110,7 @@
         gl.linkProgram(shaderProgram);
 
         var result = gl.getProgramParameter(shaderProgram, gl.LINK_STATUS);
-        alert("getProgramParameter result = " + result);
+        // alert("getProgramParameter result = " + result);
         if (!result) {
             alert("Could not initialise shaders");
         }
