@@ -4,6 +4,7 @@ import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.HashSet;
 
@@ -24,6 +25,7 @@ public class WebGLMessage implements Runnable
 	private static final boolean VERBOSE = false;
 		
 	private static final int BYTES_PER_FLOAT = 4;
+	private static final int BYTES_PER_INT = 4;
 	private static final int BYTES_PER_SHORT = 2;
 	
   private static SparseIntArray jsIdsToNativeIds = new SparseIntArray();
@@ -210,6 +212,64 @@ public class WebGLMessage implements Runnable
 		}
 	}
 	
+	private static byte[] fromObjectToByteArray(Object object) throws JSONException
+	{
+		byte[] values = null;
+		if (object instanceof JSONObject)
+		{
+			JSONObject jsonObject = (JSONObject)object;
+			values = new byte[jsonObject.length()];
+		}
+		else if (object instanceof JSONArray)
+		{
+			JSONArray jsonArray = (JSONArray)object;
+			values = new byte[jsonArray.length()];
+		}
+		else 
+		{
+			throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+		}
+		fromObjectToByteArray(object, values);
+		return values;
+	}
+
+	private static void fromObjectToByteArray(Object object, byte[] values) throws JSONException
+	{
+		for (int i = 0; i < values.length; i++) 
+		{
+			Object o = null;
+			if (object instanceof JSONObject)
+			{
+				JSONObject jsonObject = (JSONObject)object;
+				o = jsonObject.get("" + i);
+			}
+			else if (object instanceof JSONArray)
+			{
+				JSONArray jsonArray = (JSONArray)object;
+				o = jsonArray.get(i);
+			}
+			else 
+			{
+				throw new IllegalArgumentException("JUDAX: Could not identify the object nor as a JSONObject nor a JSONArray.");
+			}
+			byte value = 0;
+			if (o instanceof Number)
+			{
+				value = ((Number)o).byteValue();
+			}
+			values[i] = value;
+		}
+		// =========================================
+//		String s = "[";
+//		for (int i = 0; i < values.length; i++) 
+//		{
+//			s += values[i] + (i < values.length - 1 ? ", " : "");
+//		}
+//		s += "]";
+//		System.out.println("JUDAX: " + s);
+		// =========================================
+	}
+		
 	private static String fromWebGLNameToOpenGLName(String webGLFunctionName)
 	{
 		return "gl" + Character.toUpperCase(webGLFunctionName.charAt(0)) + webGLFunctionName.substring(1);	
@@ -251,6 +311,7 @@ public class WebGLMessage implements Runnable
 				webGLFunctionName.equals("getActiveUniform") ||
 				webGLFunctionName.equals("getAttribLocation") || // This is a special case. The WebGL spec forces it to return a GLint so let's comply with the spec in case an engine is expecting that value
 				webGLFunctionName.equals("getProgramParameter") ||
+				webGLFunctionName.equals("getBufferParameter") ||
 				webGLFunctionName.equals("getShaderPrecisionFormat") ||
 				webGLFunctionName.equals("getShaderInfoLog") ||
 				webGLFunctionName.equals("getShaderParameter");
@@ -530,6 +591,52 @@ public class WebGLMessage implements Runnable
 				}
 				// =========================================
 			}
+			else if (webGLFunctionName.equals("getBufferParameter"))
+			{
+				int target = webGLFunctionArgs.getInt(0);
+				int pname = webGLFunctionArgs.getInt(1);
+				int[] values = new int[1];
+				GLES20.glGetBufferParameteriv(target, pname, values, 0);
+				resultString = "" + values[0];
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: glGetBufferParameteriv(" + target + ", " + pname + ") -> " + resultString + " - " + message);
+				}
+				// =========================================
+			}
+			else if (
+					webGLFunctionName.equals("deleteBuffer") || 
+					webGLFunctionName.equals("deleteFramebuffer") || 
+					webGLFunctionName.equals("deleteRenderbuffer") ||
+					webGLFunctionName.equals("deleteTexture"))
+			{
+				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
+				int target = jsIdsToNativeIds.get(jsId);
+				int[] targets = { target };
+				if (webGLFunctionName.equals("deleteBuffer"))
+				{
+					GLES20.glDeleteBuffers(1, targets, 0);
+				}
+				else if (webGLFunctionName.equals("deleteFramebuffer"))
+				{
+					GLES20.glDeleteFramebuffers(1, targets, 0);
+				}
+				else if (webGLFunctionName.equals("deleteRenderbuffer"))
+				{
+					GLES20.glDeleteRenderbuffers(1, targets, 0);
+				}
+				else if (webGLFunctionName.equals("deleteTexture"))
+				{
+					GLES20.glDeleteTextures(1, targets, 0);
+				}
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: " + fromWebGLNameToOpenGLName(webGLFunctionName) + "(1, " + targets + ", 0) -> " + message);
+				}
+				// =========================================
+			}
 			else if (webGLFunctionName.equals("getShaderPrecisionFormat"))
 			{
 				int shaderType = webGLFunctionArgs.getInt(0);
@@ -668,10 +775,95 @@ public class WebGLMessage implements Runnable
 			// The call to "bufferData" requires a very specific conversion of the values array and creation of the corresponding buffer.
 			else if (webGLFunctionName.equals("bufferData"))
 			{
-				Object valuesObject = webGLFunctionArgs.get(1);
-				int dataType = messageJSON.getInt("dataType");
 				int target = webGLFunctionArgs.getInt(0);
 				int usage = webGLFunctionArgs.getInt(2);
+				Object valuesObject = webGLFunctionArgs.get(1);
+				if (valuesObject instanceof Number)
+				{
+					int size = ((Number)valuesObject).intValue();
+					byte[] values = new byte[size];
+					ByteBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length)
+							.order(ByteOrder.nativeOrder());
+					valuesBuffer.put(values).position(0);
+					GLES20.glBufferData(target, valuesBuffer.capacity(), valuesBuffer, usage);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() + ", " + valuesBuffer + ", " + usage + ")");
+					}
+					// =========================================
+				}
+				else 
+				{
+					int dataType = messageJSON.getInt("dataType");
+					if (dataType == GLES20.GL_FLOAT) 
+					{
+						float[] values = fromObjectToFloatArray(valuesObject);
+						FloatBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_FLOAT)
+								.order(ByteOrder.nativeOrder())
+								.asFloatBuffer();
+						valuesBuffer.put(values).position(0);
+						GLES20.glBufferData(target, valuesBuffer.capacity() * BYTES_PER_FLOAT, valuesBuffer, usage);
+						// =========================================
+						if (VERBOSE)
+						{
+							System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() * BYTES_PER_FLOAT + ", " + valuesBuffer + ", " + usage + ")");
+						}
+						// =========================================
+					}
+					else if (dataType == GLES20.GL_INT)
+					{
+						int[] values = fromObjectToIntArray(valuesObject);
+						IntBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_INT)
+								.order(ByteOrder.nativeOrder())
+								.asIntBuffer();
+						valuesBuffer.put(values).position(0);
+						GLES20.glBufferData(target, valuesBuffer.capacity() * BYTES_PER_INT, valuesBuffer, usage);
+						// =========================================
+						if (VERBOSE)
+						{
+							System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() * BYTES_PER_INT + ", " + valuesBuffer + ", " + usage + ")");
+						}
+						// =========================================
+					}
+					else if (dataType == GLES20.GL_SHORT)
+					{
+						short[] values = fromObjectToShortArray(valuesObject);
+						ShortBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_SHORT)
+								.order(ByteOrder.nativeOrder())
+								.asShortBuffer();
+						valuesBuffer.put(values).position(0);
+						GLES20.glBufferData(target, valuesBuffer.capacity() * BYTES_PER_SHORT, valuesBuffer, usage);
+						// =========================================
+						if (VERBOSE)
+						{
+							System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() * BYTES_PER_SHORT + ", " + valuesBuffer + ", " + usage + ")");
+						}
+						// =========================================
+					}
+					else if (dataType == GLES20.GL_BYTE)
+					{
+						byte[] values = fromObjectToByteArray(valuesObject);
+						ByteBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length)
+								.order(ByteOrder.nativeOrder());
+						valuesBuffer.put(values).position(0);
+						GLES20.glBufferData(target, valuesBuffer.capacity(), valuesBuffer, usage);
+						// =========================================
+						if (VERBOSE)
+						{
+							System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() + ", " + valuesBuffer + ", " + usage + ")");
+						}
+						// =========================================
+					}
+				}
+			}
+			// The call to "bufferSubData" requires a very specific conversion of the values array and creation of the corresponding buffer.
+			else if (webGLFunctionName.equals("bufferSubData"))
+			{
+				int target = webGLFunctionArgs.getInt(0);
+				int offset = webGLFunctionArgs.getInt(1);
+				Object valuesObject = webGLFunctionArgs.get(2);
+				int dataType = messageJSON.getInt("dataType");
 				if (dataType == GLES20.GL_FLOAT) 
 				{
 					float[] values = fromObjectToFloatArray(valuesObject);
@@ -679,11 +871,26 @@ public class WebGLMessage implements Runnable
 							.order(ByteOrder.nativeOrder())
 							.asFloatBuffer();
 					valuesBuffer.put(values).position(0);
-					GLES20.glBufferData(target, valuesBuffer.capacity() * BYTES_PER_FLOAT, valuesBuffer, usage);
+					GLES20.glBufferSubData(target, offset, valuesBuffer.capacity() * BYTES_PER_FLOAT, valuesBuffer);
 					// =========================================
 					if (VERBOSE)
 					{
-						System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() * BYTES_PER_FLOAT + ", " + valuesBuffer + ", " + usage);
+						System.out.println("JUDAX: glBufferSubData(" + target + ", " + offset + ", " + valuesBuffer.capacity() * BYTES_PER_FLOAT + ", " + valuesBuffer + ")");
+					}
+					// =========================================
+				}
+				else if (dataType == GLES20.GL_INT)
+				{
+					int[] values = fromObjectToIntArray(valuesObject);
+					IntBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length * BYTES_PER_INT)
+							.order(ByteOrder.nativeOrder())
+							.asIntBuffer();
+					valuesBuffer.put(values).position(0);
+					GLES20.glBufferSubData(target, offset, valuesBuffer.capacity() * BYTES_PER_INT, valuesBuffer);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glBufferSubData(" + target + ", " + offset + ", " + valuesBuffer.capacity() * BYTES_PER_INT + ", " + valuesBuffer + ")");
 					}
 					// =========================================
 				}
@@ -694,11 +901,25 @@ public class WebGLMessage implements Runnable
 							.order(ByteOrder.nativeOrder())
 							.asShortBuffer();
 					valuesBuffer.put(values).position(0);
-					GLES20.glBufferData(target, valuesBuffer.capacity() * BYTES_PER_SHORT, valuesBuffer, usage);
+					GLES20.glBufferSubData(target, offset, valuesBuffer.capacity() * BYTES_PER_SHORT, valuesBuffer);
 					// =========================================
 					if (VERBOSE)
 					{
-						System.out.println("JUDAX: glBufferData(" + target + ", " + valuesBuffer.capacity() * BYTES_PER_SHORT + ", " + valuesBuffer + ", " + usage);
+						System.out.println("JUDAX: glBufferSubData(" + target + ", " + offset + ", " + valuesBuffer.capacity() * BYTES_PER_SHORT + ", " + valuesBuffer + ")");
+					}
+					// =========================================
+				}
+				else if (dataType == GLES20.GL_BYTE)
+				{
+					byte[] values = fromObjectToByteArray(valuesObject);
+					ByteBuffer valuesBuffer = ByteBuffer.allocateDirect(values.length)
+							.order(ByteOrder.nativeOrder());
+					valuesBuffer.put(values).position(0);
+					GLES20.glBufferSubData(target, offset, valuesBuffer.capacity(), valuesBuffer);
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: glBufferData(" + target + ", " + offset + ", " + valuesBuffer.capacity() + ", " + valuesBuffer + ")");
 					}
 					// =========================================
 				}

@@ -90,9 +90,25 @@
 			}
 			// In the case of the 'bufferData' function, we need to identify the type of the array used and pass it to the native
 			// side using a 'dataTye' property in the call object
-			else if (originalFunctionName === "bufferData") {
-				if (argumentsArray[1] instanceof Float32Array) extCallObject.dataType = 5126; // GL_FLOAT
-				else if (argumentsArray[1] instanceof Uint16Array) extCallObject.dataType = 5122; // GL_SHORT
+			else if (originalFunctionName === "bufferData" || originalFunctionName === "bufferSubData") {
+				var arrayArgIndex = 1;
+				if (originalFunctionName === "bufferSubData") {
+					arrayArgIndex = 2;
+				}
+				if (typeof(argumentsArray[arrayArgIndex]) === "object") {
+					if (argumentsArray[arrayArgIndex] instanceof Float32Array) {
+						extCallObject.dataType = 5126; // GL_FLOAT
+					}
+					else if (argumentsArray[arrayArgIndex] instanceof Uint32Array || argumentsArray[arrayArgIndex] instanceof Int32Array) {
+						extCallObject.dataType = 5124; // GL_INT
+					}
+					else if (argumentsArray[arrayArgIndex] instanceof Uint16Array || argumentsArray[arrayArgIndex] instanceof Int16Array) {
+						extCallObject.dataType = 5122; // GL_SHORT
+					}
+					else if (argumentsArray[arrayArgIndex] instanceof Uint8Array || argumentsArray[arrayArgIndex] instanceof Int8Array) {
+						extCallObject.dataType = 5120; // GL_BYTE
+					}
+				}
 			}
 			else if (originalFunctionName === "texImage2D") {
 				// These are all the possible call options according to the WebGL spec
@@ -134,6 +150,7 @@
 					originalFunctionName === "getActiveUniform" ||
 					originalFunctionName === "getAttribLocation" || 
 					originalFunctionName === "getProgramParameter" || 
+					originalFunctionName === "getBufferParameter" || 
 					originalFunctionName === "getShaderPrecisionFormat" ||
 					originalFunctionName === "getShaderInfoLog" || 
 					originalFunctionName === "getShaderParameter";
