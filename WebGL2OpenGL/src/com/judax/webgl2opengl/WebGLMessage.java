@@ -39,14 +39,45 @@ public class WebGLMessage implements Runnable
   // Some default names of matrix uniforms
   static 
   {
+  	// PROJECTION
+  	
+  	// WebGLLessons
   	projectionMatrixUniformNames.add("uProjectionMatrix");
   	projectionMatrixUniformNames.add("uPMatrix");
-  	projectionMatrixUniformNames.add("projectionMatrix"); // ThreeJS
-  	projectionMatrixUniformNames.add("matrix_projection"); // PlayCanvas
+
+  	// ThreeJS
+  	projectionMatrixUniformNames.add("projectionMatrix");
   	
+  	// PlayCanvas
+  	projectionMatrixUniformNames.add("matrix_projection"); 
+  	projectionMatrixUniformNames.add("matrix_viewProjection");
+  	
+  	// Sketchfab
+  	projectionMatrixUniformNames.add("ProjectionMatrix");
+  	
+  	// Goo
+  	projectionMatrixUniformNames.add("projectionMatrix"); 
+  	projectionMatrixUniformNames.add("viewProjectionMatrix"); 
+
+
+  	// MODELVIEW
+  	
+  	// WebGLLessons
   	modelViewMatrixUniformNames.add("uMVMatrix");
-  	modelViewMatrixUniformNames.add("modelViewMatrix"); // ThreeJS
-  	modelViewMatrixUniformNames.add("matrix_view"); // PlayCanvas
+  	
+  	// ThreeJS
+  	modelViewMatrixUniformNames.add("modelViewMatrix"); 
+  	
+  	// PlayCanvas
+  	modelViewMatrixUniformNames.add("matrix_view"); 
+  	modelViewMatrixUniformNames.add("matrix_model");
+  	
+  	// Sketchfab
+  	modelViewMatrixUniformNames.add("ModelViewMatrix"); 
+  	
+  	// Goo
+  	modelViewMatrixUniformNames.add("viewMatrix"); 
+  	modelViewMatrixUniformNames.add("worldMatrix"); 
   }
   
 	private static float[] projectionMatrix = new float[16];
@@ -700,7 +731,8 @@ public class WebGLMessage implements Runnable
             unpackFlipY = value instanceof Boolean ? (Boolean)value : (Integer)value > 0; 
             break;
           case 0x9241: //UNPACK_PREMULTIPLY_ALPHA_WEBGL
-        		unpackPremultiplyAlpha = value instanceof Boolean ? (Boolean)value : (Integer)value > 0; 
+        		unpackPremultiplyAlpha = value instanceof Boolean ? (Boolean)value : (Integer)value > 0;
+        		System.err.println("JUDAX: unpackPremultiplyAlpha has been set but it is still not supported!");
             break;
           case 0x9243:    //UNPACK_COLORSPACE_CONVERSION_WEBGL
             //TODO
@@ -740,6 +772,7 @@ public class WebGLMessage implements Runnable
 					final BitmapFactory.Options options = new BitmapFactory.Options();
 	        options.inScaled = false;				
 					Bitmap bitmap = BitmapFactory.decodeByteArray(values, 0, values.length, options);
+					
 					if (unpackFlipY)
 					{
 						android.graphics.Matrix m = new android.graphics.Matrix();
@@ -747,6 +780,12 @@ public class WebGLMessage implements Runnable
 				    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, false);
 //				    bitmap.setDensity(DisplayMetrics.DENSITY_DEFAULT);
 				  }
+					
+//					if (!unpackPremultiplyAlpha)
+//					{
+//						bitmap.setPremultiplied(false);
+//					}
+					
 					GLUtils.texImage2D(target, level, internalFormat, bitmap, type, border);
 					// =========================================
 					if (VERBOSE)
@@ -1112,6 +1151,17 @@ public class WebGLMessage implements Runnable
 				if (VERBOSE)
 				{
 					System.out.println("JUDAX: glUniformMatrix4fv(" + location + ", " + count + ", " + transpose + ", " + values + ", " + offset + ")");
+				}
+				// =========================================
+			}
+			else if (webGLFunctionName.equals("lineWidth"))
+			{
+				float lineWidth = (float)webGLFunctionArgs.getDouble(0);
+				GLES20.glLineWidth(lineWidth);
+				// =========================================
+				if (VERBOSE)
+				{
+					System.out.println("JUDAX: glLineWidth(" + lineWidth + ")");
 				}
 				// =========================================
 			}
