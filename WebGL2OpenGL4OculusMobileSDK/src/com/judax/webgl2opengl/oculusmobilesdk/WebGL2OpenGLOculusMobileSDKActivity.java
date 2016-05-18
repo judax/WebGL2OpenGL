@@ -1,5 +1,10 @@
 package com.judax.webgl2opengl.oculusmobilesdk;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+import org.xwalk.core.XWalkResourceClient;
 import org.xwalk.core.XWalkView;
 
 import com.judax.webgl2opengl.Triangle;
@@ -8,6 +13,9 @@ import com.judax.webgl2opengl.WebGLMessageProcessorImpl;
 import com.judax.webgl2opengl.xwalk.WebGLXWalkExtension;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -16,11 +24,13 @@ import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 
 public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements SurfaceHolder.Callback
 {
 	private static final boolean USE_XWALK = true;
 	private static final boolean DRAW_TRIANGLE = false;
+	private static final boolean SHOW_XWALK_VIEW = false;
 	
 	private Triangle triangle = null;
 	
@@ -30,6 +40,7 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 	private int jsProjectionMatrixId;
 	
 	private String url;
+	private String webGL2OpenGLJS;
 		
 	// Load the gles3jni library right away to make sure JNI_OnLoad() gets called as the very first thing.
 	static
@@ -37,6 +48,8 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		System.loadLibrary( "WebGL2OpenGL4OculusMobileSDK" );
 	}
 
+	private FrameLayout layout;
+	
 	private SurfaceView surfaceView;
 	private SurfaceHolder surfaceHolder;
 	private long nativePointer = 0;
@@ -44,6 +57,29 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 	private XWalkView xwalkView = null;
 	private WebGLXWalkExtension webGLXWalkExtension = null;
 
+	private static AlertDialog createAlertDialog(Context context, String title,
+			String message, DialogInterface.OnClickListener onClickListener,
+			int numberOfButtons, String yesButtonText, String noButtonText,
+			String cancelButtonText)
+	{
+		AlertDialog alertDialog = new AlertDialog.Builder(context).create();
+		alertDialog.setTitle(title);
+		alertDialog.setMessage(message);
+		alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, yesButtonText,
+				onClickListener);
+		if (numberOfButtons > 1)
+		{
+			alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, noButtonText,
+					onClickListener);
+		}
+		if (numberOfButtons > 2)
+		{
+			alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, cancelButtonText,
+					onClickListener);
+		}
+		return alertDialog;
+	}
+	
 	private void updateFromNative()
 	{
 		if (DRAW_TRIANGLE)
@@ -70,16 +106,38 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		}
 	}
 	
+	private static String readFromAssets(Context context, String filename)
+			throws IOException
+	{
+		BufferedReader reader = new BufferedReader(new InputStreamReader(context
+				.getAssets().open(filename)));
+
+		// do reading, usually loop until end of file reading
+		StringBuilder sb = new StringBuilder();
+		String mLine = reader.readLine();
+		while (mLine != null)
+		{
+			sb.append(mLine + System.getProperty("line.separator")); // process line
+			mLine = reader.readLine();
+		}
+		reader.close();
+		return sb.toString();
+	}	
+	
 	private WebGLMessageProcessorImpl webGLMessageProcessor = new WebGLMessageProcessorImpl();
 	
 	@Override protected void onCreate( Bundle icicle )
 	{
 		super.onCreate( icicle );
+
+		layout = new FrameLayout(this);
 		
 		surfaceView = new SurfaceView( this );
-		setContentView( surfaceView );
+		layout.addView(surfaceView);
 		surfaceView.getHolder().addCallback( this );
-
+		
+		setContentView(layout);
+		
 		// Force the screen to stay on, rather than letting it dim and shut off
 		// while the user is watching a movie.
 		getWindow().addFlags( WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON );
@@ -88,7 +146,30 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		WindowManager.LayoutParams params = getWindow().getAttributes();
 		params.screenBrightness = 1.0f;
 		getWindow().setAttributes( params );
-
+		
+		// Load the WebGL2OpenGL.js file
+		try
+		{
+			webGL2OpenGLJS = readFromAssets(this, "test/js/WebGL2OpenGL.js");
+		}
+		catch(IOException e)
+		{
+			System.err.println("JUDAX: IOException while reading the WebGL2OpenGL.js file.");
+			e.printStackTrace();
+			createAlertDialog(this, "Error loading extension file", "IOException while reading the extension file. Load the page anyway?", new DialogInterface.OnClickListener()
+			{
+				@Override
+				public void onClick(DialogInterface dialog, int which)
+				{
+					if (which == DialogInterface.BUTTON2)
+					{
+						WebGL2OpenGLOculusMobileSDKActivity.this.finish();
+					}
+				}
+			}, 2, "Yes", "No", null);
+		}
+		
+		// Check if a URL has been passed with an intent
 		url = "";
 		Intent intent = getIntent();
 		if (intent != null)
@@ -100,6 +181,7 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			}
 		}
 		
+		// Create the native side
 		nativePointer = nativeOnCreate( this );
 	}
 
@@ -150,8 +232,26 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		{
 			xwalkView = new XWalkView(this);
 			xwalkView.clearCache(true);
+			xwalkView.setResourceClient(new XWalkResourceClient(xwalkView) {
+				@Override
+				public void onLoadStarted(XWalkView view, String url) 
+				{
+	        super.onLoadStarted(view, url);
+	        if (url.equals(WebGL2OpenGLOculusMobileSDKActivity.this.url))
+	        {
+	        	view.evaluateJavascript(webGL2OpenGLJS, null);
+	        	System.out.println("JUDAX: WebGL2OpenGL injected!");
+					}
+				}				
+			});
 			webGLXWalkExtension = new WebGLXWalkExtension(webGLMessageProcessor);
 			xwalkView.load(url, null);
+			
+			if (SHOW_XWALK_VIEW)
+			{
+				layout.addView(xwalkView, layout.getMeasuredWidth() / 2, layout.getMeasuredHeight() / 2);
+//				xwalkView.setVisibility(View.INVISIBLE);
+			}
 		}
 	}
 
@@ -228,7 +328,8 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 	{
 		WebGLMessage.setModelViewMatrixFromNative(modelViewMatrix);
 	}
-	
+
+	// Native calls
 	
 	// Activity lifecycle
 	private native long nativeOnCreate( Activity obj );
