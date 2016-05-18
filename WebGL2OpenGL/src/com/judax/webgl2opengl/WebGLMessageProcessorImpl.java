@@ -32,7 +32,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		{
 			String message = "Calling startFrame while inside an existing frame!";
 			System.err.println("JUDAX: " + message);
-			throw new IllegalStateException(message);
+//			throw new IllegalStateException(message);
 		}
 		insideAFrame = true;
 		
@@ -102,7 +102,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		{
 			String message = "Calling endFrame outside of a frame!";
 			System.err.println("JUDAX: " + message);
-			throw new IllegalStateException(message);
+//			throw new IllegalStateException(message);
 		}
 		insideAFrame = false;
 		
@@ -160,7 +160,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			String message = "All the non-frame related WebGL calls should have been processed before a frame is rendered! Pending calls are: " + s;
 			System.err.println("JUDAX: " + message);
-			throw new IllegalStateException(message);
+			update();
+//			throw new IllegalStateException(message);
 		}
 		
 		// Use the copy of the queue of webgl calls inside this frame
