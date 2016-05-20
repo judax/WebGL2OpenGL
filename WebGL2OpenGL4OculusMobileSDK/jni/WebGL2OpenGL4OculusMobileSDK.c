@@ -1219,7 +1219,7 @@ static void ovrRenderer_Create( ovrRenderer * renderer, const ovrJava * java, jo
 	renderer->ProjectionMatrix = ovrMatrix4f_CreateProjectionFov(
 										vrapi_GetSystemPropertyFloat( java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X ),
 										vrapi_GetSystemPropertyFloat( java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y ),
-										0.0f, 0.0f, 0.01f, 0.0f );
+										0.0f, 0.0f, 0.001f, 0.0f );
 	renderer->TexCoordsTanAnglesMatrix = ovrMatrix4f_TanAngleMatrixFromProjection( &renderer->ProjectionMatrix );
 }
 
