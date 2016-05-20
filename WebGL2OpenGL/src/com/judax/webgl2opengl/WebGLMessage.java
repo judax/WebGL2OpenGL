@@ -560,6 +560,12 @@ public class WebGLMessage implements Runnable
 						resultString += "]";						
 						break;
 					}
+					case GLES20.GL_VENDOR: case GLES20.GL_VERSION: case GLES20.GL_RENDERER: case GLES20.GL_SHADING_LANGUAGE_VERSION:
+						// Remember, strings cannot directly be returned as a JSON.parse will be executed in the extension code. Return a JSON object that will be deserialized in the JS side.
+						JSONObject jo = new JSONObject();
+						jo.put("webGL2OpenGLCallResultString", GLES20.glGetString(target));
+						resultString = jo.toString();
+						break;
 					default: 
 					{
 						System.err.println("JUDAX: Unhandled WebGL enum '" + target + "' in getParameter. Fallback to integer.");
@@ -1135,11 +1141,25 @@ public class WebGLMessage implements Runnable
 				if (projectionMatrixUniformJSIds.contains(jsId))
 				{
 					values = projectionMatrix;
+					
+					// =========================================
+					if (VERBOSE)
+					{
+						System.out.println("JUDAX: projection matrix replaced!");
+					}
+					// =========================================
 				}
 				else if (modelViewMatrixUniformsJSIds.contains(jsId))
 				{
 					values = fromObjectToFloatArray(webGLFunctionArgs.get(2));
 					Matrix.multiplyMM(values, 0, modelViewMatrix, 0, values, 0);
+					
+					// =========================================
+					if (VERBOSE)
+					{
+					System.out.println("JUDAX: modelview matrix added!");
+					}
+					// =========================================
 				}
 				else
 				{
