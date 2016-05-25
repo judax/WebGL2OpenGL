@@ -11,10 +11,9 @@ import java.util.LinkedList;
  */
 public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 {
-	private LinkedList<WebGLMessage> webGLMessagesQueue = new LinkedList<WebGLMessage>();
-//	public LinkedList<WebGLMessage> webGLMessagesQueueCopy = new LinkedList<WebGLMessage>();
+	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdate = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
-	protected LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameCopy = new LinkedList<WebGLMessage>();
+	protected LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameForRender = new LinkedList<WebGLMessage>();
 	private boolean insideAFrame = false;
 	private boolean webGLMessagesQueueInsideAFrameCopyRendered = false;
 	
@@ -35,10 +34,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 //			throw new IllegalStateException(message);
 		}
 		insideAFrame = true;
-		
-		// Add all the received messages from outside a frame to a copy so they can be processed when the update is called.
-//		webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
-//		webGLMessagesQueue.clear();
 	}
 
 	@Override
@@ -54,8 +49,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			// 3.- Wait for the synchronous message to be processed.
 			// 4.- Return the result of the call
 			this.synchronousWebGLMessage = webGLMessage;
-//			webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
-//			webGLMessagesQueue.clear();
 			
 			if (insideAFrame)
 			{
@@ -68,8 +61,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 						s += "'" + webGLMessagesQueueInsideAFrame.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueInsideAFrame.size() - 1 ? ", " : "");
 					}
 					System.err.println("JUDAX: Synchronous WebGLMessage '" + webGLMessage.getMessage() + "' inside a frame with queued render calls: " + s);
-//					webGLMessagesQueueCopy.addAll(webGLMessagesQueueInsideAFrame);
-					webGLMessagesQueue.addAll(webGLMessagesQueueInsideAFrame);
+					webGLMessagesQueueForUpdate.addAll(webGLMessagesQueueInsideAFrame);
 					webGLMessagesQueueInsideAFrame.clear();
 				}
 			}
@@ -86,7 +78,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		
 		if (!insideAFrame)
 		{
-			webGLMessagesQueue.add(webGLMessage);
+			webGLMessagesQueueForUpdate.add(webGLMessage);
 		}
 		else
 		{
@@ -110,13 +102,13 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		if (webGLMessagesQueueInsideAFrameCopyRendered)
 		{
 			// If the current batch has been rendered, make a copy of the queued draw events so it can be used in more than one onDrawFrame call while more messages are stacked up
-			webGLMessagesQueueInsideAFrameCopy = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
+			webGLMessagesQueueInsideAFrameForRender = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
 			webGLMessagesQueueInsideAFrameCopyRendered = false;
 		}
 		else 
 		{
 			// If the current batch has not been rendered yet, stack the calls
-			webGLMessagesQueueInsideAFrameCopy.addAll(webGLMessagesQueueInsideAFrame);
+			webGLMessagesQueueInsideAFrameForRender.addAll(webGLMessagesQueueInsideAFrame);
 		}
 		
 		// Clear the queue of messages inside this frame
@@ -130,14 +122,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	public synchronized void update()
 	{
 		// First run any webgl calls outside of a frame
-//		for (WebGLMessage webGLMessage: webGLMessagesQueueCopy)
-		for (WebGLMessage webGLMessage: webGLMessagesQueue)
+		for (WebGLMessage webGLMessage: webGLMessagesQueueForUpdate)
 		{
 			webGLMessage.run();
 		}
 		// Get rid of all of them!
-//		webGLMessagesQueueCopy.clear();
-		webGLMessagesQueue.clear();
+		webGLMessagesQueueForUpdate.clear();
 
 		// If there is a synchronous webGLMessage, execute it, store the result and notify the waiting thread
 		if (synchronousWebGLMessage != null)
@@ -154,15 +144,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 //		long startTime = System.currentTimeMillis();
 		
 		// If there is no synchronous message and there are still messages to be processed in the update phase, we are in trouble!
-//		if (!webGLMessagesQueueCopy.isEmpty() && synchronousWebGLMessage == null) 
-		if (!webGLMessagesQueue.isEmpty() && synchronousWebGLMessage == null) 
+		if (!webGLMessagesQueueForUpdate.isEmpty() && synchronousWebGLMessage == null) 
 		{
 			String s = "";
-			for (int i = 0; i < webGLMessagesQueue.size(); i++)
-//			for (int i = 0; i < webGLMessagesQueueCopy.size(); i++)
+			for (int i = 0; i < webGLMessagesQueueForUpdate.size(); i++)
 			{
-//				s += "'" + webGLMessagesQueueCopy.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueCopy.size() - 1 ? ", " : "");
-				s += "'" + webGLMessagesQueue.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueue.size() - 1 ? ", " : "");
+				s += "'" + webGLMessagesQueueForUpdate.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueForUpdate.size() - 1 ? ", " : "");
 			}
 			String message = "All the non-frame related WebGL calls should have been processed before a frame is rendered! Pending calls are: " + s;
 			System.err.println("JUDAX: " + message);
@@ -171,7 +158,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		}
 		
 		// Use the copy of the queue of webgl calls inside this frame
-		for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameCopy)
+		for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameForRender)
 		{
 			webGLMessage.fromWebGL2OpenGL();
 		}
