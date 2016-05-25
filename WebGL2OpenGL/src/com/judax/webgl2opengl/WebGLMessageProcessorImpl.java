@@ -12,7 +12,7 @@ import java.util.LinkedList;
 public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 {
 	private LinkedList<WebGLMessage> webGLMessagesQueue = new LinkedList<WebGLMessage>();
-	public LinkedList<WebGLMessage> webGLMessagesQueueCopy = new LinkedList<WebGLMessage>();
+//	public LinkedList<WebGLMessage> webGLMessagesQueueCopy = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
 	protected LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameCopy = new LinkedList<WebGLMessage>();
 	private boolean insideAFrame = false;
@@ -37,8 +37,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		insideAFrame = true;
 		
 		// Add all the received messages from outside a frame to a copy so they can be processed when the update is called.
-		webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
-		webGLMessagesQueue.clear();
+//		webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
+//		webGLMessagesQueue.clear();
 	}
 
 	@Override
@@ -54,8 +54,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			// 3.- Wait for the synchronous message to be processed.
 			// 4.- Return the result of the call
 			this.synchronousWebGLMessage = webGLMessage;
-			webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
-			webGLMessagesQueue.clear();
+//			webGLMessagesQueueCopy.addAll(webGLMessagesQueue);
+//			webGLMessagesQueue.clear();
 			
 			if (insideAFrame)
 			{
@@ -68,7 +68,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 						s += "'" + webGLMessagesQueueInsideAFrame.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueInsideAFrame.size() - 1 ? ", " : "");
 					}
 					System.err.println("JUDAX: Synchronous WebGLMessage '" + webGLMessage.getMessage() + "' inside a frame with queued render calls: " + s);
-					webGLMessagesQueueCopy.addAll(webGLMessagesQueueInsideAFrame);
+//					webGLMessagesQueueCopy.addAll(webGLMessagesQueueInsideAFrame);
+					webGLMessagesQueue.addAll(webGLMessagesQueueInsideAFrame);
 					webGLMessagesQueueInsideAFrame.clear();
 				}
 			}
@@ -129,12 +130,14 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	public synchronized void update()
 	{
 		// First run any webgl calls outside of a frame
-		for (WebGLMessage webGLMessage: webGLMessagesQueueCopy)
+//		for (WebGLMessage webGLMessage: webGLMessagesQueueCopy)
+		for (WebGLMessage webGLMessage: webGLMessagesQueue)
 		{
 			webGLMessage.run();
 		}
 		// Get rid of all of them!
-		webGLMessagesQueueCopy.clear();
+//		webGLMessagesQueueCopy.clear();
+		webGLMessagesQueue.clear();
 
 		// If there is a synchronous webGLMessage, execute it, store the result and notify the waiting thread
 		if (synchronousWebGLMessage != null)
@@ -151,12 +154,15 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 //		long startTime = System.currentTimeMillis();
 		
 		// If there is no synchronous message and there are still messages to be processed in the update phase, we are in trouble!
-		if (!webGLMessagesQueueCopy.isEmpty() && synchronousWebGLMessage == null) 
+//		if (!webGLMessagesQueueCopy.isEmpty() && synchronousWebGLMessage == null) 
+		if (!webGLMessagesQueue.isEmpty() && synchronousWebGLMessage == null) 
 		{
 			String s = "";
-			for (int i = 0; i < webGLMessagesQueueCopy.size(); i++)
+			for (int i = 0; i < webGLMessagesQueue.size(); i++)
+//			for (int i = 0; i < webGLMessagesQueueCopy.size(); i++)
 			{
-				s += "'" + webGLMessagesQueueCopy.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueCopy.size() - 1 ? ", " : "");
+//				s += "'" + webGLMessagesQueueCopy.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueCopy.size() - 1 ? ", " : "");
+				s += "'" + webGLMessagesQueue.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueue.size() - 1 ? ", " : "");
 			}
 			String message = "All the non-frame related WebGL calls should have been processed before a frame is rendered! Pending calls are: " + s;
 			System.err.println("JUDAX: " + message);
