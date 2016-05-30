@@ -40,6 +40,7 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 	private int jsProjectionMatrixId;
 	
 	private String url;
+	private boolean urlLoaded = false;
 	private String webGL2OpenGLJS;
 		
 	// Load the gles3jni library right away to make sure JNI_OnLoad() gets called as the very first thing.
@@ -132,7 +133,33 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 
 		layout = new FrameLayout(this);
 		
+		if (USE_XWALK)
+		{
+			// Create and setup the XWalkView and the extension.
+			xwalkView = new XWalkView(this);
+			xwalkView.clearCache(true);
+			xwalkView.setResourceClient(new XWalkResourceClient(xwalkView) {
+				@Override
+				public void onLoadStarted(XWalkView view, String url) 
+				{
+	        super.onLoadStarted(view, url);
+	        if (url.equals(WebGL2OpenGLOculusMobileSDKActivity.this.url))
+	        {
+	        	view.evaluateJavascript(webGL2OpenGLJS, null);
+	        	System.out.println("JUDAX: WebGL2OpenGL injected!");
+					}
+				}				
+			});
+			webGLXWalkExtension = new WebGLXWalkExtension(webGLMessageProcessor);
+		
+			// Add the xwalkview to the layout.
+			layout.addView(xwalkView);
+		}
+		
+		// Create and setup the surfaceview.
 		surfaceView = new SurfaceView( this );
+		
+		// Add the surfaceview to the layout (on top of the xwalkview). 
 		layout.addView(surfaceView);
 		surfaceView.getHolder().addCallback( this );
 		
@@ -178,6 +205,7 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			if (extras != null) 
 			{
 				url = extras.getString("url");
+				surfaceView.setZOrderOnTop(true);
 			}
 		}
 		
@@ -228,30 +256,10 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			surfaceHolder = holder;
 		}
 		
-		if (USE_XWALK && xwalkView == null)
+		if (USE_XWALK && !urlLoaded)
 		{
-			xwalkView = new XWalkView(this);
-			xwalkView.clearCache(true);
-			xwalkView.setResourceClient(new XWalkResourceClient(xwalkView) {
-				@Override
-				public void onLoadStarted(XWalkView view, String url) 
-				{
-	        super.onLoadStarted(view, url);
-	        if (url.equals(WebGL2OpenGLOculusMobileSDKActivity.this.url))
-	        {
-	        	view.evaluateJavascript(webGL2OpenGLJS, null);
-	        	System.out.println("JUDAX: WebGL2OpenGL injected!");
-					}
-				}				
-			});
-			webGLXWalkExtension = new WebGLXWalkExtension(webGLMessageProcessor);
 			xwalkView.load(url, null);
-			
-			if (SHOW_XWALK_VIEW)
-			{
-				layout.addView(xwalkView, layout.getMeasuredWidth() / 2, layout.getMeasuredHeight() / 2);
-//				xwalkView.setVisibility(View.INVISIBLE);
-			}
+			urlLoaded = true;			
 		}
 	}
 
