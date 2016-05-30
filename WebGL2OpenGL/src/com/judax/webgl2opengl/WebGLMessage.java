@@ -1029,7 +1029,16 @@ public class WebGLMessage implements Runnable
 			{
 				int jsId = webGLFunctionArgs.getJSONObject(0).getInt("webGL2OpenGLId");
 				int location = jsIdsToNativeIds.get(jsId);
-				float v1 = (float)webGLFunctionArgs.getDouble(1);
+				float v1 = 0.0f;
+				Object value = webGLFunctionArgs.get(1);
+				if (value instanceof Number)
+				{
+					v1 = ((Number)value).floatValue();
+				}
+				else if (value instanceof Boolean)
+				{
+					v1 = ((Boolean)value).booleanValue() ? 1.0f : 0.0f;
+				}
 				GLES20.glUniform1f(location, v1);
 				// =========================================
 				if (VERBOSE)
