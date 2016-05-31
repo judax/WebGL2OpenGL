@@ -59,8 +59,8 @@ static const int GPU_LEVEL			= 3;
 #define EXPLICIT_GL_OBJECTS		0
 
 // JUDAX BEGIN
-#define RENDER_NATIVE_TRIANGLE  1
-#define USE_SCENE               1
+#define RENDER_NATIVE_TRIANGLE  0
+#define USE_SCENE               0
 // JUDAX END
 
 // JUDAX BEGIN (forward declarations)
@@ -1225,7 +1225,7 @@ static void ovrRenderer_Create( ovrRenderer * renderer, const ovrJava * java, jo
 	renderer->ProjectionMatrix = ovrMatrix4f_CreateProjectionFov(
 										vrapi_GetSystemPropertyFloat( java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X ),
 										vrapi_GetSystemPropertyFloat( java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y ),
-										0.0f, 0.0f, 0.01f, 0.0f );
+										0.0f, 0.0f, 0.001f, 0.0f );
 	renderer->TexCoordsTanAnglesMatrix = ovrMatrix4f_TanAngleMatrixFromProjection( &renderer->ProjectionMatrix );
 }
 
