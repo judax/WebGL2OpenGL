@@ -50,8 +50,10 @@ LOCAL_C_INCLUDES := \
 	. \
 	./3rdparty/ovr_sdk_mobile_1.0.0.1/include
 LOCAL_SRC_FILES := \
-	./WebGL2OpenGL4OculusMobileSDK.c
-LOCAL_CFLAGS := -std=c99 -Werror 
+	./WebGL2OpenGL4OculusMobileSDK.cpp
+# ./WebGL2OpenGL4OculusMobileSDK.c
+LOCAL_CFLAGS := -std=c++11 -Werror 
+#LOCAL_CFLAGS := -std=c99 -Werror 
 LOCAL_SHARED_LIBRARIES := vrapi
 LOCAL_WHOLE_STATIC_LIBRARIES := \
 	openglloader \
