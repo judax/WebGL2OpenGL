@@ -18,7 +18,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
 	protected LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameForRender = new LinkedList<WebGLMessage>();
 	private boolean insideAFrame = false;
-	private boolean webGLMessagesQueueInsideAFrameCopyRendered = false;
 	
 	private Lock lock = new ReentrantLock();
 	private Condition synchronousWebGLMessagePocessed = lock.newCondition();
@@ -132,17 +131,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			insideAFrame = false;
 			
-			if (webGLMessagesQueueInsideAFrameCopyRendered)
-			{
-				// If the current batch has been rendered, make a copy of the queued draw events so it can be used in more than one onDrawFrame call while more messages are stacked up
-				webGLMessagesQueueInsideAFrameForRender = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
-				webGLMessagesQueueInsideAFrameCopyRendered = false;
-			}
-			else 
-			{
-				// If the current batch has not been rendered yet, stack the calls
-				webGLMessagesQueueInsideAFrameForRender.addAll(webGLMessagesQueueInsideAFrame);
-			}
+			// If the current batch has been rendered, make a copy of the queued draw events so it can be used in more than one onDrawFrame call while more messages are stacked up
+			webGLMessagesQueueInsideAFrameForRender = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
 			
 			// Clear the queue of messages inside this frame
 			webGLMessagesQueueInsideAFrame.clear();
@@ -151,6 +141,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	//		long elapsedFrameTime = endFrameTime - startFrameTime;
 	//		System.out.println("JUDAX: " + elapsedFrameTime + " millis from startFrame to endFrame.");
 			
+			// Ok, all these render messages should be rendered for both eyes before we can allow more message to be queued.
 			try
 			{
 				renderFrameCalledForBothEyes.await();
@@ -220,13 +211,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 				webGLMessage.fromWebGL2OpenGL();
 			}
 			// Do not clear the copy of the queue of webgl calls inside this frame because depending on the speed of the OpenGL thread and the JS thread, it could be used to make multiple render calls
-			// But mark that the current batch of messages in the copy have been rendered.
-			webGLMessagesQueueInsideAFrameCopyRendered = true;
 			
 	//		long endTime = System.currentTimeMillis();
 	//		long elapsedTime = endTime - startTime;
 	//		System.out.println("JUDAX: " + elapsedTime + " millis to process " + webGLMessagesQueueInsideAFrameCopy.size() + " messages.");
 			
+			// Increment the renderFrameCounter until we get both eyes to be rendered.
 			renderFrameCounter++;
 			if (renderFrameCounter == 2)
 			{
