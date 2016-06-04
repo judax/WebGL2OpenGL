@@ -16,12 +16,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 {
 	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdate = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
-	protected LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameForRender = new LinkedList<WebGLMessage>();
+	protected LinkedList<LinkedList<WebGLMessage>> webGLMessagesQueueInsideAFrameForRenderStack = new LinkedList<LinkedList<WebGLMessage>>();
 	private boolean insideAFrame = false;
+	private int indexInStackWhileRenderingBothEyes = -1;
 	
 	private Lock lock = new ReentrantLock();
 	private Condition synchronousWebGLMessagePocessed = lock.newCondition();
-	private Condition renderFrameCalledForBothEyes = lock.newCondition();
 	
 	private WebGLMessage synchronousWebGLMessage = null;
 	private String synchronousWebGLMessageResult = null;
@@ -131,8 +131,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			insideAFrame = false;
 			
-			// If the current batch has been rendered, make a copy of the queued draw events so it can be used in more than one onDrawFrame call while more messages are stacked up
-			webGLMessagesQueueInsideAFrameForRender = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
+			// Always stack the messages inside the frame
+			webGLMessagesQueueInsideAFrameForRenderStack.add((LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone());
 			
 			// Clear the queue of messages inside this frame
 			webGLMessagesQueueInsideAFrame.clear();
@@ -140,15 +140,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	//		long endFrameTime = System.currentTimeMillis();
 	//		long elapsedFrameTime = endFrameTime - startFrameTime;
 	//		System.out.println("JUDAX: " + elapsedFrameTime + " millis from startFrame to endFrame.");
-			
-			// Ok, all these render messages should be rendered for both eyes before we can allow more message to be queued.
-			try
-			{
-				renderFrameCalledForBothEyes.await();
-			}
-			catch(InterruptedException e)
-			{
-			}
 		}
 		finally
 		{
@@ -189,6 +180,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		lock.lock();
 		try
 		{
+			// If this is the first eye, lock the index of the messages that should be rendered for the other eye too.
+			if (renderFrameCounter == 0)
+			{
+				indexInStackWhileRenderingBothEyes = webGLMessagesQueueInsideAFrameForRenderStack.size() - 1;
+			}
+			
 	//		long startTime = System.currentTimeMillis();
 			
 			// If there is no synchronous message and there are still messages to be processed in the update phase, we are in trouble!
@@ -206,9 +203,13 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			
 			// Use the copy of the queue of webgl calls inside this frame
-			for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameForRender)
+			if (indexInStackWhileRenderingBothEyes >= 0)
 			{
-				webGLMessage.fromWebGL2OpenGL();
+				LinkedList<WebGLMessage> messagesToRender = webGLMessagesQueueInsideAFrameForRenderStack.get(indexInStackWhileRenderingBothEyes);
+				for (WebGLMessage webGLMessage: messagesToRender)
+				{
+					webGLMessage.fromWebGL2OpenGL();
+				}
 			}
 			// Do not clear the copy of the queue of webgl calls inside this frame because depending on the speed of the OpenGL thread and the JS thread, it could be used to make multiple render calls
 			
@@ -220,8 +221,14 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			renderFrameCounter++;
 			if (renderFrameCounter == 2)
 			{
+				// Reset the counter and the index
 				renderFrameCounter = 0;
-				renderFrameCalledForBothEyes.signal();
+				indexInStackWhileRenderingBothEyes = -1;
+				// Only leave the last set of messages in the stack as we may need it for future rendering calls.
+				while(webGLMessagesQueueInsideAFrameForRenderStack.size() > 1)
+				{
+					webGLMessagesQueueInsideAFrameForRenderStack.removeFirst();
+				}
 			}
 		}
 		finally
