@@ -7,15 +7,15 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		BD2DBA0C1CFD9B25006DF776 /* WebGL2OpenGL4OculusMobileSDK.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebGL2OpenGL4OculusMobileSDK.cpp; path = ../../WebGL2OpenGL4OculusMobileSDK.cpp; sourceTree = "<group>"; };
 		BD85C7441CBCD06C00AFC7BF /* libWebGL2OpenGL4OculusMobileSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libWebGL2OpenGL4OculusMobileSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		BD85C7531CC2B89100AFC7BF /* WebGL2OpenGL4OculusMobileSDK.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = WebGL2OpenGL4OculusMobileSDK.c; path = ../../WebGL2OpenGL4OculusMobileSDK.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		BD85C73B1CBCD06C00AFC7BF = {
 			isa = PBXGroup;
 			children = (
-				BD85C7531CC2B89100AFC7BF /* WebGL2OpenGL4OculusMobileSDK.c */,
+				BD2DBA0C1CFD9B25006DF776 /* WebGL2OpenGL4OculusMobileSDK.cpp */,
 				BD85C7451CBCD06C00AFC7BF /* Products */,
 			);
 			sourceTree = "<group>";
