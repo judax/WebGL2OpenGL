@@ -15,6 +15,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 {
 	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdate = new LinkedList<WebGLMessage>();
+	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdateCopy = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
 	protected LinkedList<LinkedList<WebGLMessage>> webGLMessagesQueueInsideAFrameForRenderStack = new LinkedList<LinkedList<WebGLMessage>>();
 	private boolean insideAFrame = false;
@@ -45,6 +46,9 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		//			throw new IllegalStateException(message);
 			}
 			insideAFrame = true;
+			
+			webGLMessagesQueueForUpdateCopy.addAll(webGLMessagesQueueForUpdate);
+			webGLMessagesQueueForUpdate.clear();
 		}
 		finally
 		{
@@ -69,6 +73,9 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 				// 4.- Return the result of the call
 				this.synchronousWebGLMessage = webGLMessage;
 				
+				webGLMessagesQueueForUpdateCopy.addAll(webGLMessagesQueueForUpdate);
+				webGLMessagesQueueForUpdate.clear();
+				
 				if (insideAFrame)
 				{
 					System.err.println("JUDAX: A synchronous call to '" + webGLMessage.getMessage() + "' made inside a frame. Not a great idea. Many of these calls might slow down the JS process.");
@@ -80,7 +87,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 							s += "'" + webGLMessagesQueueInsideAFrame.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueInsideAFrame.size() - 1 ? ", " : "");
 						}
 						System.err.println("JUDAX: Synchronous WebGLMessage '" + webGLMessage.getMessage() + "' inside a frame with queued render calls: " + s);
-						webGLMessagesQueueForUpdate.addAll(webGLMessagesQueueInsideAFrame);
+						webGLMessagesQueueForUpdateCopy.addAll(webGLMessagesQueueInsideAFrame);
 						webGLMessagesQueueInsideAFrame.clear();
 					}
 				}
@@ -153,12 +160,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		try
 		{
 			// First run any webgl calls outside of a frame
-			for (WebGLMessage webGLMessage: webGLMessagesQueueForUpdate)
+			for (WebGLMessage webGLMessage: webGLMessagesQueueForUpdateCopy)
 			{
 				webGLMessage.run();
 			}
 			// Get rid of all of them!
-			webGLMessagesQueueForUpdate.clear();
+			webGLMessagesQueueForUpdateCopy.clear();
 	
 			// If there is a synchronous webGLMessage, execute it, store the result and notify the waiting thread
 			if (synchronousWebGLMessage != null)
@@ -189,20 +196,20 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	//		long startTime = System.currentTimeMillis();
 			
 			// If there is no synchronous message and there are still messages to be processed in the update phase, we are in trouble!
-			if (!webGLMessagesQueueForUpdate.isEmpty() && synchronousWebGLMessage == null) 
+			if (!webGLMessagesQueueForUpdateCopy.isEmpty() && synchronousWebGLMessage == null) 
 			{
 				String s = "";
 				for (int i = 0; i < webGLMessagesQueueForUpdate.size(); i++)
 				{
-					s += "'" + webGLMessagesQueueForUpdate.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueForUpdate.size() - 1 ? ", " : "");
+					s += "'" + webGLMessagesQueueForUpdateCopy.get(i).getWebGLFunctionName() + "'" + (i < webGLMessagesQueueForUpdateCopy.size() - 1 ? ", " : "");
 				}
 				String message = "All the non-frame related WebGL calls should have been processed before a frame is rendered! Pending calls are: " + s;
 				System.err.println("JUDAX: " + message);
 				update();
 	//			throw new IllegalStateException(message);
 			}
-			
-			// Use the copy of the queue of webgl calls inside this frame
+
+			// If we have an index in the stack it means there are commands to be rendered, so get them and render them!
 			if (indexInStackWhileRenderingBothEyes >= 0)
 			{
 				LinkedList<WebGLMessage> messagesToRender = webGLMessagesQueueInsideAFrameForRenderStack.get(indexInStackWhileRenderingBothEyes);
@@ -223,7 +230,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			{
 				// Reset the counter and the index
 				renderFrameCounter = 0;
-				indexInStackWhileRenderingBothEyes = -1;
 				// Only leave the last set of messages in the stack as we may need it for future rendering calls.
 				while(webGLMessagesQueueInsideAFrameForRenderStack.size() > 1)
 				{
