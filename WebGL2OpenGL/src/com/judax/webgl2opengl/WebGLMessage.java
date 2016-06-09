@@ -312,6 +312,8 @@ public class WebGLMessage implements Runnable
 	private String webGLFunctionName = null;
 	private JSONArray webGLFunctionArgs = null;
 	private JSONArray supportedExtensions = null;
+	
+	private boolean processed = false;
 
 	private void getSupportedExtensions()
 	{
@@ -351,6 +353,23 @@ public class WebGLMessage implements Runnable
 	public String fromWebGL2OpenGL()
 	{
 		String resultString = "";
+		
+		if (processed && ( 
+				webGLFunctionName.equals("createBuffer") || 
+				webGLFunctionName.equals("createTexture") || 
+				webGLFunctionName.equals("createFramebuffer") || 
+				webGLFunctionName.equals("createRenderbuffer") ||
+				webGLFunctionName.equals("createShader") || 
+				webGLFunctionName.equals("createProgram") ||
+				webGLFunctionName.equals("texImage2D") ||
+				webGLFunctionName.equals("getUniformLocation")
+				))
+		{
+			return resultString;
+		}
+		
+		processed = true;
+		
 		try 
 		{
 			// =========================================
