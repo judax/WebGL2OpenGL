@@ -243,13 +243,17 @@
 			}
 			return this;
 		}
+		
+		var singleWebGLContext = null;
 
 		HTMLCanvasElement.prototype.getContext = function(contextType, contextAttributes) {
 			var argumentsArray = Array.prototype.slice.apply(arguments);
 			var context = originalHTMLCanvasElementPrototypeGetContextFunction.apply(this, argumentsArray);
 			if (contextType === "webgl" || contextType === "experimental-webgl") {
-				var canvasWebGLContext = new JudaXCanvasWebGLContext(context, contextAttributes);
-				context = canvasWebGLContext;
+				if (singleWebGLContext == null) {
+					singleWebGLContext = new JudaXCanvasWebGLContext(context, contextAttributes);
+				}
+				context = singleWebGLContext;
 			}
 			return context;
 		};
