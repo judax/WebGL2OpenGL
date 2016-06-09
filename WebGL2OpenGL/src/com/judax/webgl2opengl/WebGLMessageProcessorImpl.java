@@ -27,7 +27,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	private WebGLMessage synchronousWebGLMessage = null;
 	private String synchronousWebGLMessageResult = null;
 	
-	private int renderFrameCounter = 0;
+	private int indexOfEyeBeingRendered = -1; // Eyes indices range from 0 to 1
+	private boolean currentWebGLMessagesQueueInsideAFrameCopyRenderedForBothEyes = true;
 	
 //	private long startFrameTime = 0; 
 	
@@ -143,7 +144,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			
 			if (!webGLMessagesQueueInsideAFrame.isEmpty())
 			{
-				if (renderFrameCounter == 1)
+				// If we have just rendered the first eye or if the previous messages have not yet been rendered for both eyes, we need to wait!
+				while (indexOfEyeBeingRendered == 0 || !currentWebGLMessagesQueueInsideAFrameCopyRenderedForBothEyes)
 				{
 					try
 					{
@@ -156,6 +158,8 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 				}
 				webGLMessagesQueueInsideAFrameCopy = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
 				webGLMessagesQueueInsideAFrame.clear();
+				// Mark that these messages have not been rendered for both eyes yet
+				currentWebGLMessagesQueueInsideAFrameCopyRenderedForBothEyes = false;
 			}
 			
 	//		long endFrameTime = System.currentTimeMillis();
@@ -227,12 +231,16 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	//		long elapsedTime = endTime - startTime;
 	//		System.out.println("JUDAX: " + elapsedTime + " millis to process " + webGLMessagesQueueInsideAFrameCopy.size() + " messages.");
 			
-			// Increment the renderFrameCounter until we get both eyes to be rendered.
-			renderFrameCounter++;
-			if (renderFrameCounter == 2)
+			// Increment the index of the current eye being rendered
+			indexOfEyeBeingRendered++;
+			// If we have reached the second eye (index 1) then we know for sure we have rendered the batch of messages
+			if (indexOfEyeBeingRendered == 1)
 			{
-				// Reset the counter and the index
-				renderFrameCounter = 0;
+				// Set that we are not rendering any eyes
+				indexOfEyeBeingRendered = -1;
+				// Set that the messages have been rendered for both eyes.
+				currentWebGLMessagesQueueInsideAFrameCopyRenderedForBothEyes = true;
+				// Unblock anyone waiting for both eyes to be rendered.
 				bothEyesRendered.signal();
 			}
 		}
