@@ -17,12 +17,12 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdate = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueForUpdateCopy = new LinkedList<WebGLMessage>();
 	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrame = new LinkedList<WebGLMessage>();
-	protected LinkedList<LinkedList<WebGLMessage>> webGLMessagesQueueInsideAFrameForRenderStack = new LinkedList<LinkedList<WebGLMessage>>();
+	private LinkedList<WebGLMessage> webGLMessagesQueueInsideAFrameCopy = new LinkedList<WebGLMessage>();
 	private boolean insideAFrame = false;
-	private int indexInStackWhileRenderingBothEyes = -1;
 	
 	private Lock lock = new ReentrantLock();
 	private Condition synchronousWebGLMessagePocessed = lock.newCondition();
+	private Condition bothEyesRendered = lock.newCondition();
 	
 	private WebGLMessage synchronousWebGLMessage = null;
 	private String synchronousWebGLMessageResult = null;
@@ -47,8 +47,11 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			insideAFrame = true;
 			
-			webGLMessagesQueueForUpdateCopy.addAll(webGLMessagesQueueForUpdate);
-			webGLMessagesQueueForUpdate.clear();
+			if (!webGLMessagesQueueForUpdate.isEmpty())
+			{
+				webGLMessagesQueueForUpdateCopy.addAll(webGLMessagesQueueForUpdate);
+				webGLMessagesQueueForUpdate.clear();
+			}
 		}
 		finally
 		{
@@ -138,11 +141,22 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			}
 			insideAFrame = false;
 			
-			// Always stack the messages inside the frame
-			webGLMessagesQueueInsideAFrameForRenderStack.add((LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone());
-			
-			// Clear the queue of messages inside this frame
-			webGLMessagesQueueInsideAFrame.clear();
+			if (!webGLMessagesQueueInsideAFrame.isEmpty())
+			{
+				if (renderFrameCounter == 1)
+				{
+					try
+					{
+						System.err.println("JUDAX: We need to wait until the second eye is also rendered!");
+						bothEyesRendered.await();
+					}
+					catch(InterruptedException e)
+					{
+					}
+				}
+				webGLMessagesQueueInsideAFrameCopy = (LinkedList<WebGLMessage>)webGLMessagesQueueInsideAFrame.clone();
+				webGLMessagesQueueInsideAFrame.clear();
+			}
 			
 	//		long endFrameTime = System.currentTimeMillis();
 	//		long elapsedFrameTime = endFrameTime - startFrameTime;
@@ -187,12 +201,6 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 		lock.lock();
 		try
 		{
-			// If this is the first eye, lock the index of the messages that should be rendered for the other eye too.
-			if (renderFrameCounter == 0)
-			{
-				indexInStackWhileRenderingBothEyes = webGLMessagesQueueInsideAFrameForRenderStack.size() - 1;
-			}
-			
 	//		long startTime = System.currentTimeMillis();
 			
 			// If there is no synchronous message and there are still messages to be processed in the update phase, we are in trouble!
@@ -209,14 +217,9 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 	//			throw new IllegalStateException(message);
 			}
 
-			// If we have an index in the stack it means there are commands to be rendered, so get them and render them!
-			if (indexInStackWhileRenderingBothEyes >= 0)
+			for (WebGLMessage webGLMessage: webGLMessagesQueueInsideAFrameCopy)
 			{
-				LinkedList<WebGLMessage> messagesToRender = webGLMessagesQueueInsideAFrameForRenderStack.get(indexInStackWhileRenderingBothEyes);
-				for (WebGLMessage webGLMessage: messagesToRender)
-				{
-					webGLMessage.fromWebGL2OpenGL();
-				}
+				webGLMessage.fromWebGL2OpenGL();
 			}
 			// Do not clear the copy of the queue of webgl calls inside this frame because depending on the speed of the OpenGL thread and the JS thread, it could be used to make multiple render calls
 			
@@ -230,11 +233,7 @@ public class WebGLMessageProcessorImpl implements WebGLMessageProcessor
 			{
 				// Reset the counter and the index
 				renderFrameCounter = 0;
-				// Only leave the last set of messages in the stack as we may need it for future rendering calls.
-				while(webGLMessagesQueueInsideAFrameForRenderStack.size() > 1)
-				{
-					webGLMessagesQueueInsideAFrameForRenderStack.removeFirst();
-				}
+				bothEyesRendered.signal();
 			}
 		}
 		finally
