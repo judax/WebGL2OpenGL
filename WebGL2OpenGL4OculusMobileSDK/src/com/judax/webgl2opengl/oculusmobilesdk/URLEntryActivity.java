@@ -31,6 +31,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.net.Uri;
 
 public class URLEntryActivity extends Activity
 {
@@ -69,6 +70,25 @@ public class URLEntryActivity extends Activity
 			urlEditText.setText(textView.getText());
 		}
 	}; 
+
+	private void addDefaultURLsToURLHistoryIfTheyDoNotExist() throws JSONException
+	{
+		String[] defaultURLs = {
+			"http://threejs.org/examples/webgl_shader2.html",
+			"https://aframe.io/aframe/examples/boilerplate-helloworld/",
+			"http://threejs.org/examples/webgl_materials_cubemap.html",
+			"http://threejs.org/examples/webgl_loader_collada.html",
+			"http://threejs.org/examples/webgl_morphtargets_horse.html",
+			"https://vizor.io/edelblut/space-adventure",
+			"http://threejs.org/examples/webgl_materials_grass.html",
+			"http://threejs.org/examples/webgl_lights_pointlights.html",
+			"http://threejs.org/examples/webgl_shadowmesh.html"
+		};
+		for (int i = 0; i < defaultURLs.length; i++)
+		{
+			addURLToHistoryIfItDoesNotExist(defaultURLs[i]);
+		}
+	}
 	
 	private void savePreferences()
 	{
@@ -85,8 +105,8 @@ public class URLEntryActivity extends Activity
 		editor.putString(URL_HISTORY_URLS_KEY, urlHistoryURLs.toString());
 		if (!editor.commit())
 		{
-  		AlertDialog alertDialog = createAlertDialog(URLEntryActivity.this, "Error saving URL", "For an unknown reason, the URL or URL history could not be saved to the app preferences. The information might not be available from one execution to another if you close the app.", null, 1, "Ok", null, null);
-  		alertDialog.show();
+	  		AlertDialog alertDialog = createAlertDialog(URLEntryActivity.this, "Error saving URL", "For an unknown reason, the URL or URL history could not be saved to the app preferences. The information might not be available from one execution to another if you close the app.", null, 1, "Ok", null, null);
+	  		alertDialog.show();
 		}
 	}
 	
@@ -161,7 +181,7 @@ public class URLEntryActivity extends Activity
 		  		savePreferences(url);
 		  		clearURLHistoryButton.setEnabled(urlHistoryURLs.length() > 0);
 					Intent intent = new Intent(getApplicationContext(), WebGL2OpenGLOculusMobileSDKActivity.class);
-					intent.putExtra("url", url);
+					intent.setData(Uri.parse(url));
 					startActivity(intent);
 		  	}
 		  	catch(MalformedURLException e)
@@ -256,11 +276,14 @@ public class URLEntryActivity extends Activity
 			{
 				urlHistoryListViewAdapter.add(urlHistoryURLs.getString(i));
 			}
+
+			addDefaultURLsToURLHistoryIfTheyDoNotExist();
+			
 			clearURLHistoryButton.setEnabled(length > 0);
 		}
 		catch (JSONException e)
 		{
-  		createAlertDialog(this, "JSON Exception", "Could not correctly parse and load previous URL history in JSON format: " + e.getMessage(), null, 1, "Ok", null, null).show();
+			createAlertDialog(this, "JSON Exception", "Could not correctly parse and load previous URL history in JSON format: " + e.getMessage(), null, 1, "Ok", null, null).show();
 		}
 
 	}
@@ -312,7 +335,7 @@ public class URLEntryActivity extends Activity
 			}
 			catch(JSONException e)
 			{
-	  		createAlertDialog(this.getContext(), "JSON Exception", "JSONException accesing element at index '" + position + "' of the URL History JSON array. " + e.getMessage(), null, 1, "Ok", null, null).show();
+		  		createAlertDialog(this.getContext(), "JSON Exception", "JSONException accesing element at index '" + position + "' of the URL History JSON array. " + e.getMessage(), null, 1, "Ok", null, null).show();
 			}
 			return view;
 		}

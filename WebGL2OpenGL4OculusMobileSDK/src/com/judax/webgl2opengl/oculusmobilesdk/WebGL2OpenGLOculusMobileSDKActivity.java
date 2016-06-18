@@ -201,12 +201,8 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		Intent intent = getIntent();
 		if (intent != null)
 		{
-			Bundle extras = intent.getExtras(); 
-			if (extras != null) 
-			{
-				url = extras.getString("url");
-				surfaceView.setZOrderOnTop(true);
-			}
+			url = intent.getDataString(); 
+			surfaceView.setZOrderOnTop(true);
 		}
 		
 		// Create the native side
@@ -281,8 +277,10 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 		}
 	}
 
-	@Override public boolean dispatchKeyEvent( KeyEvent event )
+	@Override 
+	public boolean dispatchKeyEvent( KeyEvent event )
 	{
+		boolean result = true;
 		if ( nativePointer != 0 )
 		{
 			int keyCode = event.getKeyCode();
@@ -297,11 +295,17 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			}
 			nativeOnKeyEvent( nativePointer, keyCode, action );
 		}
-		return true;
+		if (xwalkView != null)
+		{
+			result = xwalkView.dispatchKeyEvent(event);
+		}
+		return result;
 	}
 
-	@Override public boolean dispatchTouchEvent( MotionEvent event )
+	@Override 
+	public boolean dispatchTouchEvent( MotionEvent event )
 	{
+		boolean result = true;
 		if ( nativePointer != 0 )
 		{
 			int action = event.getAction();
@@ -313,7 +317,22 @@ public class WebGL2OpenGLOculusMobileSDKActivity extends Activity implements Sur
 			}
 			nativeOnTouchEvent( nativePointer, action, x, y );
 		}
-		return true;
+		if (xwalkView != null)
+		{
+			result = xwalkView.dispatchTouchEvent(event);
+		}
+		return result;
+	}
+	
+	@Override
+	public boolean dispatchGenericMotionEvent(MotionEvent ev)
+	{
+		boolean result = true;
+		if (xwalkView != null)
+		{
+			result = xwalkView.dispatchGenericMotionEvent(ev);
+		}
+		return result; 
 	}
 	
 	private static String matrixToString(float[] matrix)
